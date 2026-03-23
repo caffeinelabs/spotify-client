@@ -201,6 +201,16 @@ let config = {
 let result = await* SomeApi.someFunction(config, ...);
 ```
 
+Alternatively, use the suite-based API to bind config once and call multiple functions without threading it through each call:
+
+```motoko
+import { SomeApi } "mo:spotify-client/Apis/SomeApi";
+
+let api = SomeApi(config);
+let result = await api.someFunction(...);
+let other = await api.anotherFunction(...);
+```
+
 ### HTTP Outcalls and Cycles
 
 The generated API client makes HTTP outcalls using the Internet Computer's management canister. HTTP outcalls require cycles to execute.
