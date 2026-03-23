@@ -178,10 +178,27 @@ This is a Motoko module that can be used in your Internet Computer project.
 
 ## Usage
 
-Import the generated modules in your Motoko code:
+Import the generated API modules in your Motoko code:
 
 ```motoko
-import Spotify Web API "path/to/generated/modules";
+import TracksApi "path/to/generated/Apis/TracksApi";
+// or using destructuring for specific functions
+import { getTrack; getSeveralTracks } "path/to/generated/Apis/TracksApi";
+```
+
+Configure and call the API:
+
+```motoko
+let config : TracksApi.Config__ = {
+    baseUrl = "https://api.spotify.com/v1";
+    auth = ?#bearer("your-spotify-access-token");
+    max_response_bytes = null;
+    transform = null;
+    is_replicated = null;
+    cycles = 30_000_000_000;
+};
+
+let track = await* TracksApi.getTrack(config, "trackId", "US");
 ```
 
 ### HTTP Outcalls and Cycles
