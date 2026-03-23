@@ -15,6 +15,7 @@ import { type PagingArtistDiscographyAlbumObject; JSON = PagingArtistDiscography
 import { type PagingSavedAlbumObject; JSON = PagingSavedAlbumObject } "../Models/PagingSavedAlbumObject";
 import { type PagingSimplifiedTrackObject; JSON = PagingSimplifiedTrackObject } "../Models/PagingSimplifiedTrackObject";
 import { type SaveAlbumsUserRequest; JSON = SaveAlbumsUserRequest } "../Models/SaveAlbumsUserRequest";
+import { type Config } "../Config";
 
 module {
     // Management Canister interface for HTTP outcalls
@@ -54,27 +55,9 @@ module {
     let http_request = (actor "aaaaa-aa" : actor { http_request : (http_request_args) -> async http_request_result }).http_request;
 
 
-    public type Auth__ = {
-        #bearer : Text;
-        #apiKey : Text;
-        #basicAuth : { user : Text; password : Text };
-    };
-
-    public type Config__ = {
-        baseUrl : Text;
-        auth : ?Auth__;
-        max_response_bytes : ?Nat64;
-        transform : ?{
-            function : shared query ({ response : http_request_result; context : Blob }) -> async http_request_result;
-            context : Blob;
-        };
-        is_replicated : ?Bool;
-        cycles : Nat;
-    };
-
     /// Check User's Saved Albums 
     /// Check if one or more albums is already saved in the current Spotify user's 'Your Music' library. 
-    public func checkUsersSavedAlbums(config : Config__, ids : Text) : async* [Bool] {
+    public func checkUsersSavedAlbums(config : Config, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/albums/contains"
             # "?" # "ids=" # ids;
@@ -214,7 +197,7 @@ module {
 
     /// Get Album 
     /// Get Spotify catalog information for a single album. 
-    public func getAnAlbum(config : Config__, id : Text, market : Text) : async* AlbumObject {
+    public func getAnAlbum(config : Config, id : Text, market : Text) : async* AlbumObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/albums/{id}"
             |> Text.replace(_, #text "{id}", id)
@@ -360,7 +343,7 @@ module {
 
     /// Get Album Tracks 
     /// Get Spotify catalog information about an album’s tracks. Optional parameters can be used to limit the number of tracks returned. 
-    public func getAnAlbumsTracks(config : Config__, id : Text, market : Text, limit : Nat, offset : Int) : async* PagingSimplifiedTrackObject {
+    public func getAnAlbumsTracks(config : Config, id : Text, market : Text, limit : Nat, offset : Int) : async* PagingSimplifiedTrackObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/albums/{id}/tracks"
             |> Text.replace(_, #text "{id}", id)
@@ -506,7 +489,7 @@ module {
 
     /// Get Artist's Albums 
     /// Get Spotify catalog information about an artist's albums. 
-    public func getAnArtistsAlbums(config : Config__, id : Text, includeGroups : Text, market : Text, limit : Nat, offset : Int) : async* PagingArtistDiscographyAlbumObject {
+    public func getAnArtistsAlbums(config : Config, id : Text, includeGroups : Text, market : Text, limit : Nat, offset : Int) : async* PagingArtistDiscographyAlbumObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/artists/{id}/albums"
             |> Text.replace(_, #text "{id}", id)
@@ -652,7 +635,7 @@ module {
 
     /// Get Several Albums 
     /// Get Spotify catalog information for multiple albums identified by their Spotify IDs. 
-    public func getMultipleAlbums(config : Config__, ids : Text, market : Text) : async* GetMultipleAlbums200Response {
+    public func getMultipleAlbums(config : Config, ids : Text, market : Text) : async* GetMultipleAlbums200Response {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/albums"
             # "?" # "ids=" # ids # "&" # "market=" # market;
@@ -797,7 +780,7 @@ module {
 
     /// Get New Releases 
     /// Get a list of new album releases featured in Spotify (shown, for example, on a Spotify player’s “Browse” tab). 
-    public func getNewReleases(config : Config__, limit : Nat, offset : Int) : async* GetNewReleases200Response {
+    public func getNewReleases(config : Config, limit : Nat, offset : Int) : async* GetNewReleases200Response {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/browse/new-releases"
             # "?" # "limit=" # Int.toText(limit) # "&" # "offset=" # Int.toText(offset);
@@ -942,7 +925,7 @@ module {
 
     /// Get User's Saved Albums 
     /// Get a list of the albums saved in the current Spotify user's 'Your Music' library. 
-    public func getUsersSavedAlbums(config : Config__, limit : Nat, offset : Int, market : Text) : async* PagingSavedAlbumObject {
+    public func getUsersSavedAlbums(config : Config, limit : Nat, offset : Int, market : Text) : async* PagingSavedAlbumObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/albums"
             # "?" # "limit=" # Int.toText(limit) # "&" # "offset=" # Int.toText(offset) # "&" # "market=" # market;
@@ -1087,7 +1070,7 @@ module {
 
     /// Remove Users' Saved Albums 
     /// Remove one or more albums from the current user's 'Your Music' library. 
-    public func removeAlbumsUser(config : Config__, ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async* () {
+    public func removeAlbumsUser(config : Config, ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/albums"
             # "?" # "ids=" # ids;
@@ -1141,7 +1124,7 @@ module {
 
     /// Save Albums for Current User 
     /// Save one or more albums to the current user's 'Your Music' library. 
-    public func saveAlbumsUser(config : Config__, ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async* () {
+    public func saveAlbumsUser(config : Config, ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/albums"
             # "?" # "ids=" # ids;
@@ -1206,7 +1189,7 @@ module {
         saveAlbumsUser;
     };
 
-    public module class AlbumsApi(config : Config__) {
+    public module class AlbumsApi(config : Config) {
         /// Check User's Saved Albums 
         /// Check if one or more albums is already saved in the current Spotify user's 'Your Music' library. 
         public func checkUsersSavedAlbums(ids : Text) : async [Bool] {

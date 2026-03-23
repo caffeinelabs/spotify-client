@@ -15,6 +15,7 @@ src/Apis/SearchApi.mo
 src/Apis/ShowsApi.mo
 src/Apis/TracksApi.mo
 src/Apis/UsersApi.mo
+src/Config.mo
 src/Models/AddTracksToPlaylistRequest.mo
 src/Models/AlbumBase.mo
 src/Models/AlbumBaseAlbumType.mo

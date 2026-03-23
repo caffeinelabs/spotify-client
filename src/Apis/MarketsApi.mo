@@ -9,6 +9,7 @@ import Base64 "mo:core/Base64";
 import { JSON } "mo:serde-core";
 import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/GetAnAlbum401Response";
 import { type GetAvailableMarkets200Response; JSON = GetAvailableMarkets200Response } "../Models/GetAvailableMarkets200Response";
+import { type Config } "../Config";
 
 module {
     // Management Canister interface for HTTP outcalls
@@ -48,27 +49,9 @@ module {
     let http_request = (actor "aaaaa-aa" : actor { http_request : (http_request_args) -> async http_request_result }).http_request;
 
 
-    public type Auth__ = {
-        #bearer : Text;
-        #apiKey : Text;
-        #basicAuth : { user : Text; password : Text };
-    };
-
-    public type Config__ = {
-        baseUrl : Text;
-        auth : ?Auth__;
-        max_response_bytes : ?Nat64;
-        transform : ?{
-            function : shared query ({ response : http_request_result; context : Blob }) -> async http_request_result;
-            context : Blob;
-        };
-        is_replicated : ?Bool;
-        cycles : Nat;
-    };
-
     /// Get Available Markets 
     /// Get the list of markets where Spotify is available. 
-    public func getAvailableMarkets(config : Config__) : async* GetAvailableMarkets200Response {
+    public func getAvailableMarkets(config : Config) : async* GetAvailableMarkets200Response {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/markets";
 
@@ -215,7 +198,7 @@ module {
         getAvailableMarkets;
     };
 
-    public module class MarketsApi(config : Config__) {
+    public module class MarketsApi(config : Config) {
         /// Get Available Markets 
         /// Get the list of markets where Spotify is available. 
         public func getAvailableMarkets() : async GetAvailableMarkets200Response {

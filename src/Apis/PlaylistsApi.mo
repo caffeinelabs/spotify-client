@@ -20,6 +20,7 @@ import { type PlaylistObject; JSON = PlaylistObject } "../Models/PlaylistObject"
 import { type RemoveTracksPlaylistRequest; JSON = RemoveTracksPlaylistRequest } "../Models/RemoveTracksPlaylistRequest";
 import { type ReorderOrReplacePlaylistsTracks200Response; JSON = ReorderOrReplacePlaylistsTracks200Response } "../Models/ReorderOrReplacePlaylistsTracks200Response";
 import { type ReorderOrReplacePlaylistsTracksRequest; JSON = ReorderOrReplacePlaylistsTracksRequest } "../Models/ReorderOrReplacePlaylistsTracksRequest";
+import { type Config } "../Config";
 
 module {
     // Management Canister interface for HTTP outcalls
@@ -59,27 +60,9 @@ module {
     let http_request = (actor "aaaaa-aa" : actor { http_request : (http_request_args) -> async http_request_result }).http_request;
 
 
-    public type Auth__ = {
-        #bearer : Text;
-        #apiKey : Text;
-        #basicAuth : { user : Text; password : Text };
-    };
-
-    public type Config__ = {
-        baseUrl : Text;
-        auth : ?Auth__;
-        max_response_bytes : ?Nat64;
-        transform : ?{
-            function : shared query ({ response : http_request_result; context : Blob }) -> async http_request_result;
-            context : Blob;
-        };
-        is_replicated : ?Bool;
-        cycles : Nat;
-    };
-
     /// Add Items to Playlist 
     /// Add one or more items to a user's playlist. 
-    public func addTracksToPlaylist(config : Config__, playlistId : Text, position : Int, uris : Text, addTracksToPlaylistRequest : AddTracksToPlaylistRequest) : async* ReorderOrReplacePlaylistsTracks200Response {
+    public func addTracksToPlaylist(config : Config, playlistId : Text, position : Int, uris : Text, addTracksToPlaylistRequest : AddTracksToPlaylistRequest) : async* ReorderOrReplacePlaylistsTracks200Response {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/playlists/{playlist_id}/tracks"
             |> Text.replace(_, #text "{playlist_id}", playlistId)
@@ -230,7 +213,7 @@ module {
 
     /// Change Playlist Details 
     /// Change a playlist's name and public/private state. (The user must, of course, own the playlist.) 
-    public func changePlaylistDetails(config : Config__, playlistId : Text, changePlaylistDetailsRequest : ChangePlaylistDetailsRequest) : async* () {
+    public func changePlaylistDetails(config : Config, playlistId : Text, changePlaylistDetailsRequest : ChangePlaylistDetailsRequest) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/playlists/{playlist_id}"
             |> Text.replace(_, #text "{playlist_id}", playlistId);
@@ -284,7 +267,7 @@ module {
 
     /// Check if Current User Follows Playlist 
     /// Check to see if the current user is following a specified playlist. 
-    public func checkIfUserFollowsPlaylist(config : Config__, playlistId : Text, ids : Text) : async* [Bool] {
+    public func checkIfUserFollowsPlaylist(config : Config, playlistId : Text, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/playlists/{playlist_id}/followers/contains"
             |> Text.replace(_, #text "{playlist_id}", playlistId)
@@ -425,7 +408,7 @@ module {
 
     /// Create Playlist 
     /// Create a playlist for a Spotify user. (The playlist will be empty until you [add tracks](/documentation/web-api/reference/add-tracks-to-playlist).) Each user is generally limited to a maximum of 11000 playlists. 
-    public func createPlaylist(config : Config__, userId : Text, createPlaylistRequest : CreatePlaylistRequest) : async* PlaylistObject {
+    public func createPlaylist(config : Config, userId : Text, createPlaylistRequest : CreatePlaylistRequest) : async* PlaylistObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/users/{user_id}/playlists"
             |> Text.replace(_, #text "{user_id}", userId);
@@ -575,7 +558,7 @@ module {
 
     /// Follow Playlist 
     /// Add the current user as a follower of a playlist. 
-    public func followPlaylist(config : Config__, playlistId : Text, followPlaylistRequest : FollowPlaylistRequest) : async* () {
+    public func followPlaylist(config : Config, playlistId : Text, followPlaylistRequest : FollowPlaylistRequest) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/playlists/{playlist_id}/followers"
             |> Text.replace(_, #text "{playlist_id}", playlistId);
@@ -629,7 +612,7 @@ module {
 
     /// Get Category's Playlists 
     /// Get a list of Spotify playlists tagged with a particular category. 
-    public func getACategoriesPlaylists(config : Config__, categoryId : Text, limit : Nat, offset : Int) : async* PagingFeaturedPlaylistObject {
+    public func getACategoriesPlaylists(config : Config, categoryId : Text, limit : Nat, offset : Int) : async* PagingFeaturedPlaylistObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/browse/categories/{category_id}/playlists"
             |> Text.replace(_, #text "{category_id}", categoryId)
@@ -775,7 +758,7 @@ module {
 
     /// Get Current User's Playlists 
     /// Get a list of the playlists owned or followed by the current Spotify user. 
-    public func getAListOfCurrentUsersPlaylists(config : Config__, limit : Nat, offset : Int) : async* PagingPlaylistObject {
+    public func getAListOfCurrentUsersPlaylists(config : Config, limit : Nat, offset : Int) : async* PagingPlaylistObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/playlists"
             # "?" # "limit=" # Int.toText(limit) # "&" # "offset=" # Int.toText(offset);
@@ -920,7 +903,7 @@ module {
 
     /// Get Featured Playlists 
     /// Get a list of Spotify featured playlists (shown, for example, on a Spotify player's 'Browse' tab). 
-    public func getFeaturedPlaylists(config : Config__, locale : Text, limit : Nat, offset : Int) : async* PagingFeaturedPlaylistObject {
+    public func getFeaturedPlaylists(config : Config, locale : Text, limit : Nat, offset : Int) : async* PagingFeaturedPlaylistObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/browse/featured-playlists"
             # "?" # "locale=" # locale # "&" # "limit=" # Int.toText(limit) # "&" # "offset=" # Int.toText(offset);
@@ -1065,7 +1048,7 @@ module {
 
     /// Get User's Playlists 
     /// Get a list of the playlists owned or followed by a Spotify user. 
-    public func getListUsersPlaylists(config : Config__, userId : Text, limit : Nat, offset : Int) : async* PagingPlaylistObject {
+    public func getListUsersPlaylists(config : Config, userId : Text, limit : Nat, offset : Int) : async* PagingPlaylistObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/users/{user_id}/playlists"
             |> Text.replace(_, #text "{user_id}", userId)
@@ -1211,7 +1194,7 @@ module {
 
     /// Get Playlist 
     /// Get a playlist owned by a Spotify user. 
-    public func getPlaylist(config : Config__, playlistId : Text, market : Text, fields : Text, additionalTypes : Text) : async* PlaylistObject {
+    public func getPlaylist(config : Config, playlistId : Text, market : Text, fields : Text, additionalTypes : Text) : async* PlaylistObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/playlists/{playlist_id}"
             |> Text.replace(_, #text "{playlist_id}", playlistId)
@@ -1357,7 +1340,7 @@ module {
 
     /// Get Playlist Cover Image 
     /// Get the current image associated with a specific playlist. 
-    public func getPlaylistCover(config : Config__, playlistId : Text) : async* [ImageObject] {
+    public func getPlaylistCover(config : Config, playlistId : Text) : async* [ImageObject] {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/playlists/{playlist_id}/images"
             |> Text.replace(_, #text "{playlist_id}", playlistId);
@@ -1503,7 +1486,7 @@ module {
 
     /// Get Playlist Items 
     /// Get full details of the items of a playlist owned by a Spotify user. 
-    public func getPlaylistsTracks(config : Config__, playlistId : Text, market : Text, fields : Text, limit : Nat, offset : Int, additionalTypes : Text) : async* PagingPlaylistTrackObject {
+    public func getPlaylistsTracks(config : Config, playlistId : Text, market : Text, fields : Text, limit : Nat, offset : Int, additionalTypes : Text) : async* PagingPlaylistTrackObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/playlists/{playlist_id}/tracks"
             |> Text.replace(_, #text "{playlist_id}", playlistId)
@@ -1649,7 +1632,7 @@ module {
 
     /// Remove Playlist Items 
     /// Remove one or more items from a user's playlist. 
-    public func removeTracksPlaylist(config : Config__, playlistId : Text, removeTracksPlaylistRequest : RemoveTracksPlaylistRequest) : async* ReorderOrReplacePlaylistsTracks200Response {
+    public func removeTracksPlaylist(config : Config, playlistId : Text, removeTracksPlaylistRequest : RemoveTracksPlaylistRequest) : async* ReorderOrReplacePlaylistsTracks200Response {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/playlists/{playlist_id}/tracks"
             |> Text.replace(_, #text "{playlist_id}", playlistId);
@@ -1799,7 +1782,7 @@ module {
 
     /// Update Playlist Items 
     /// Either reorder or replace items in a playlist depending on the request's parameters. To reorder items, include `range_start`, `insert_before`, `range_length` and `snapshot_id` in the request's body. To replace items, include `uris` as either a query parameter or in the request's body. Replacing items in a playlist will overwrite its existing items. This operation can be used for replacing or clearing items in a playlist. <br/> **Note**: Replace and reorder are mutually exclusive operations which share the same endpoint, but have different parameters. These operations can't be applied together in a single request. 
-    public func reorderOrReplacePlaylistsTracks(config : Config__, playlistId : Text, uris : Text, reorderOrReplacePlaylistsTracksRequest : ReorderOrReplacePlaylistsTracksRequest) : async* ReorderOrReplacePlaylistsTracks200Response {
+    public func reorderOrReplacePlaylistsTracks(config : Config, playlistId : Text, uris : Text, reorderOrReplacePlaylistsTracksRequest : ReorderOrReplacePlaylistsTracksRequest) : async* ReorderOrReplacePlaylistsTracks200Response {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/playlists/{playlist_id}/tracks"
             |> Text.replace(_, #text "{playlist_id}", playlistId)
@@ -1950,7 +1933,7 @@ module {
 
     /// Unfollow Playlist 
     /// Remove the current user as a follower of a playlist. 
-    public func unfollowPlaylist(config : Config__, playlistId : Text) : async* () {
+    public func unfollowPlaylist(config : Config, playlistId : Text) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/playlists/{playlist_id}/followers"
             |> Text.replace(_, #text "{playlist_id}", playlistId);
@@ -1999,7 +1982,7 @@ module {
 
     /// Add Custom Playlist Cover Image 
     /// Replace the image used to represent a specific playlist. 
-    public func uploadCustomPlaylistCover(config : Config__, playlistId : Text, body : Blob) : async* () {
+    public func uploadCustomPlaylistCover(config : Config, playlistId : Text, body : Blob) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/playlists/{playlist_id}/images"
             |> Text.replace(_, #text "{playlist_id}", playlistId);
@@ -2071,7 +2054,7 @@ module {
         uploadCustomPlaylistCover;
     };
 
-    public module class PlaylistsApi(config : Config__) {
+    public module class PlaylistsApi(config : Config) {
         /// Add Items to Playlist 
         /// Add one or more items to a user's playlist. 
         public func addTracksToPlaylist(playlistId : Text, position : Int, uris : Text, addTracksToPlaylistRequest : AddTracksToPlaylistRequest) : async ReorderOrReplacePlaylistsTracks200Response {

@@ -12,6 +12,7 @@ import { type GetMultipleShows200Response; JSON = GetMultipleShows200Response } 
 import { type PagingSavedShowObject; JSON = PagingSavedShowObject } "../Models/PagingSavedShowObject";
 import { type PagingSimplifiedEpisodeObject; JSON = PagingSimplifiedEpisodeObject } "../Models/PagingSimplifiedEpisodeObject";
 import { type ShowObject; JSON = ShowObject } "../Models/ShowObject";
+import { type Config } "../Config";
 
 module {
     // Management Canister interface for HTTP outcalls
@@ -51,27 +52,9 @@ module {
     let http_request = (actor "aaaaa-aa" : actor { http_request : (http_request_args) -> async http_request_result }).http_request;
 
 
-    public type Auth__ = {
-        #bearer : Text;
-        #apiKey : Text;
-        #basicAuth : { user : Text; password : Text };
-    };
-
-    public type Config__ = {
-        baseUrl : Text;
-        auth : ?Auth__;
-        max_response_bytes : ?Nat64;
-        transform : ?{
-            function : shared query ({ response : http_request_result; context : Blob }) -> async http_request_result;
-            context : Blob;
-        };
-        is_replicated : ?Bool;
-        cycles : Nat;
-    };
-
     /// Check User's Saved Shows 
     /// Check if one or more shows is already saved in the current Spotify user's library. 
-    public func checkUsersSavedShows(config : Config__, ids : Text) : async* [Bool] {
+    public func checkUsersSavedShows(config : Config, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/shows/contains"
             # "?" # "ids=" # ids;
@@ -211,7 +194,7 @@ module {
 
     /// Get Show 
     /// Get Spotify catalog information for a single show identified by its unique Spotify ID. 
-    public func getAShow(config : Config__, id : Text, market : Text) : async* ShowObject {
+    public func getAShow(config : Config, id : Text, market : Text) : async* ShowObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/shows/{id}"
             |> Text.replace(_, #text "{id}", id)
@@ -357,7 +340,7 @@ module {
 
     /// Get Show Episodes 
     /// Get Spotify catalog information about an show’s episodes. Optional parameters can be used to limit the number of episodes returned. 
-    public func getAShowsEpisodes(config : Config__, id : Text, market : Text, limit : Nat, offset : Int) : async* PagingSimplifiedEpisodeObject {
+    public func getAShowsEpisodes(config : Config, id : Text, market : Text, limit : Nat, offset : Int) : async* PagingSimplifiedEpisodeObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/shows/{id}/episodes"
             |> Text.replace(_, #text "{id}", id)
@@ -503,7 +486,7 @@ module {
 
     /// Get Several Shows 
     /// Get Spotify catalog information for several shows based on their Spotify IDs. 
-    public func getMultipleShows(config : Config__, ids : Text, market : Text) : async* GetMultipleShows200Response {
+    public func getMultipleShows(config : Config, ids : Text, market : Text) : async* GetMultipleShows200Response {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/shows"
             # "?" # "market=" # market # "&" # "ids=" # ids;
@@ -648,7 +631,7 @@ module {
 
     /// Get User's Saved Shows 
     /// Get a list of shows saved in the current Spotify user's library. Optional parameters can be used to limit the number of shows returned. 
-    public func getUsersSavedShows(config : Config__, limit : Nat, offset : Int) : async* PagingSavedShowObject {
+    public func getUsersSavedShows(config : Config, limit : Nat, offset : Int) : async* PagingSavedShowObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/shows"
             # "?" # "limit=" # Int.toText(limit) # "&" # "offset=" # Int.toText(offset);
@@ -793,7 +776,7 @@ module {
 
     /// Remove User's Saved Shows 
     /// Delete one or more shows from current Spotify user's library. 
-    public func removeShowsUser(config : Config__, ids : Text, market : Text) : async* () {
+    public func removeShowsUser(config : Config, ids : Text, market : Text) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/shows"
             # "?" # "ids=" # ids # "&" # "market=" # market;
@@ -842,7 +825,7 @@ module {
 
     /// Save Shows for Current User 
     /// Save one or more shows to current Spotify user's library. 
-    public func saveShowsUser(config : Config__, ids : Text) : async* () {
+    public func saveShowsUser(config : Config, ids : Text) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/shows"
             # "?" # "ids=" # ids;
@@ -900,7 +883,7 @@ module {
         saveShowsUser;
     };
 
-    public module class ShowsApi(config : Config__) {
+    public module class ShowsApi(config : Config) {
         /// Check User's Saved Shows 
         /// Check if one or more shows is already saved in the current Spotify user's library. 
         public func checkUsersSavedShows(ids : Text) : async [Bool] {

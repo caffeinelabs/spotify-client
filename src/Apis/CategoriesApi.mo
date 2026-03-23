@@ -11,6 +11,7 @@ import { type CategoryObject; JSON = CategoryObject } "../Models/CategoryObject"
 import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/GetAnAlbum401Response";
 import { type GetCategories200Response; JSON = GetCategories200Response } "../Models/GetCategories200Response";
 import { type PagingFeaturedPlaylistObject; JSON = PagingFeaturedPlaylistObject } "../Models/PagingFeaturedPlaylistObject";
+import { type Config } "../Config";
 
 module {
     // Management Canister interface for HTTP outcalls
@@ -50,27 +51,9 @@ module {
     let http_request = (actor "aaaaa-aa" : actor { http_request : (http_request_args) -> async http_request_result }).http_request;
 
 
-    public type Auth__ = {
-        #bearer : Text;
-        #apiKey : Text;
-        #basicAuth : { user : Text; password : Text };
-    };
-
-    public type Config__ = {
-        baseUrl : Text;
-        auth : ?Auth__;
-        max_response_bytes : ?Nat64;
-        transform : ?{
-            function : shared query ({ response : http_request_result; context : Blob }) -> async http_request_result;
-            context : Blob;
-        };
-        is_replicated : ?Bool;
-        cycles : Nat;
-    };
-
     /// Get Category's Playlists 
     /// Get a list of Spotify playlists tagged with a particular category. 
-    public func getACategoriesPlaylists(config : Config__, categoryId : Text, limit : Nat, offset : Int) : async* PagingFeaturedPlaylistObject {
+    public func getACategoriesPlaylists(config : Config, categoryId : Text, limit : Nat, offset : Int) : async* PagingFeaturedPlaylistObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/browse/categories/{category_id}/playlists"
             |> Text.replace(_, #text "{category_id}", categoryId)
@@ -216,7 +199,7 @@ module {
 
     /// Get Single Browse Category 
     /// Get a single category used to tag items in Spotify (on, for example, the Spotify player’s “Browse” tab). 
-    public func getACategory(config : Config__, categoryId : Text, locale : Text) : async* CategoryObject {
+    public func getACategory(config : Config, categoryId : Text, locale : Text) : async* CategoryObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/browse/categories/{category_id}"
             |> Text.replace(_, #text "{category_id}", categoryId)
@@ -362,7 +345,7 @@ module {
 
     /// Get Several Browse Categories 
     /// Get a list of categories used to tag items in Spotify (on, for example, the Spotify player’s “Browse” tab). 
-    public func getCategories(config : Config__, locale : Text, limit : Nat, offset : Int) : async* GetCategories200Response {
+    public func getCategories(config : Config, locale : Text, limit : Nat, offset : Int) : async* GetCategories200Response {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/browse/categories"
             # "?" # "locale=" # locale # "&" # "limit=" # Int.toText(limit) # "&" # "offset=" # Int.toText(offset);
@@ -512,7 +495,7 @@ module {
         getCategories;
     };
 
-    public module class CategoriesApi(config : Config__) {
+    public module class CategoriesApi(config : Config) {
         /// Get Category's Playlists 
         /// Get a list of Spotify playlists tagged with a particular category. 
         public func getACategoriesPlaylists(categoryId : Text, limit : Nat, offset : Int) : async PagingFeaturedPlaylistObject {

@@ -9,6 +9,7 @@ import Base64 "mo:core/Base64";
 import { JSON } "mo:serde-core";
 import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/GetAnAlbum401Response";
 import { type GetRecommendationGenres200Response; JSON = GetRecommendationGenres200Response } "../Models/GetRecommendationGenres200Response";
+import { type Config } "../Config";
 
 module {
     // Management Canister interface for HTTP outcalls
@@ -48,27 +49,9 @@ module {
     let http_request = (actor "aaaaa-aa" : actor { http_request : (http_request_args) -> async http_request_result }).http_request;
 
 
-    public type Auth__ = {
-        #bearer : Text;
-        #apiKey : Text;
-        #basicAuth : { user : Text; password : Text };
-    };
-
-    public type Config__ = {
-        baseUrl : Text;
-        auth : ?Auth__;
-        max_response_bytes : ?Nat64;
-        transform : ?{
-            function : shared query ({ response : http_request_result; context : Blob }) -> async http_request_result;
-            context : Blob;
-        };
-        is_replicated : ?Bool;
-        cycles : Nat;
-    };
-
     /// Get Available Genre Seeds 
     /// Retrieve a list of available genres seed parameter values for [recommendations](/documentation/web-api/reference/get-recommendations). 
-    public func getRecommendationGenres(config : Config__) : async* GetRecommendationGenres200Response {
+    public func getRecommendationGenres(config : Config) : async* GetRecommendationGenres200Response {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/recommendations/available-genre-seeds";
 
@@ -215,7 +198,7 @@ module {
         getRecommendationGenres;
     };
 
-    public module class GenresApi(config : Config__) {
+    public module class GenresApi(config : Config) {
         /// Get Available Genre Seeds 
         /// Retrieve a list of available genres seed parameter values for [recommendations](/documentation/web-api/reference/get-recommendations). 
         public func getRecommendationGenres() : async GetRecommendationGenres200Response {

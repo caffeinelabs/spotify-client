@@ -20,6 +20,7 @@ import { type PrivateUserObject; JSON = PrivateUserObject } "../Models/PrivateUs
 import { type PublicUserObject; JSON = PublicUserObject } "../Models/PublicUserObject";
 import { type Type_; JSON = Type_ } "../Models/Type_";
 import { type UnfollowArtistsUsersRequest; JSON = UnfollowArtistsUsersRequest } "../Models/UnfollowArtistsUsersRequest";
+import { type Config } "../Config";
 
 module {
     // Management Canister interface for HTTP outcalls
@@ -59,27 +60,9 @@ module {
     let http_request = (actor "aaaaa-aa" : actor { http_request : (http_request_args) -> async http_request_result }).http_request;
 
 
-    public type Auth__ = {
-        #bearer : Text;
-        #apiKey : Text;
-        #basicAuth : { user : Text; password : Text };
-    };
-
-    public type Config__ = {
-        baseUrl : Text;
-        auth : ?Auth__;
-        max_response_bytes : ?Nat64;
-        transform : ?{
-            function : shared query ({ response : http_request_result; context : Blob }) -> async http_request_result;
-            context : Blob;
-        };
-        is_replicated : ?Bool;
-        cycles : Nat;
-    };
-
     /// Check If User Follows Artists or Users 
     /// Check to see if the current user is following one or more artists or other Spotify users. 
-    public func checkCurrentUserFollows(config : Config__, type_ : ItemType2, ids : Text) : async* [Bool] {
+    public func checkCurrentUserFollows(config : Config, type_ : ItemType2, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/following/contains"
             # "?" # "type=" # ItemType2.toJSON(type_) # "&" # "ids=" # ids;
@@ -219,7 +202,7 @@ module {
 
     /// Check if Current User Follows Playlist 
     /// Check to see if the current user is following a specified playlist. 
-    public func checkIfUserFollowsPlaylist(config : Config__, playlistId : Text, ids : Text) : async* [Bool] {
+    public func checkIfUserFollowsPlaylist(config : Config, playlistId : Text, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/playlists/{playlist_id}/followers/contains"
             |> Text.replace(_, #text "{playlist_id}", playlistId)
@@ -360,7 +343,7 @@ module {
 
     /// Follow Artists or Users 
     /// Add the current user as a follower of one or more artists or other Spotify users. 
-    public func followArtistsUsers(config : Config__, type_ : ItemType1, ids : Text, followArtistsUsersRequest : FollowArtistsUsersRequest) : async* () {
+    public func followArtistsUsers(config : Config, type_ : ItemType1, ids : Text, followArtistsUsersRequest : FollowArtistsUsersRequest) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/following"
             # "?" # "type=" # ItemType1.toJSON(type_) # "&" # "ids=" # ids;
@@ -414,7 +397,7 @@ module {
 
     /// Follow Playlist 
     /// Add the current user as a follower of a playlist. 
-    public func followPlaylist(config : Config__, playlistId : Text, followPlaylistRequest : FollowPlaylistRequest) : async* () {
+    public func followPlaylist(config : Config, playlistId : Text, followPlaylistRequest : FollowPlaylistRequest) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/playlists/{playlist_id}/followers"
             |> Text.replace(_, #text "{playlist_id}", playlistId);
@@ -468,7 +451,7 @@ module {
 
     /// Get Current User's Profile 
     /// Get detailed profile information about the current user (including the current user's username). 
-    public func getCurrentUsersProfile(config : Config__) : async* PrivateUserObject {
+    public func getCurrentUsersProfile(config : Config) : async* PrivateUserObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me";
 
@@ -612,7 +595,7 @@ module {
 
     /// Get Followed Artists 
     /// Get the current user's followed artists. 
-    public func getFollowed(config : Config__, type_ : ItemType, after : Text, limit : Nat) : async* GetFollowed200Response {
+    public func getFollowed(config : Config, type_ : ItemType, after : Text, limit : Nat) : async* GetFollowed200Response {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/following"
             # "?" # "type=" # ItemType.toJSON(type_) # "&" # "after=" # after # "&" # "limit=" # Int.toText(limit);
@@ -757,7 +740,7 @@ module {
 
     /// Get User's Playlists 
     /// Get a list of the playlists owned or followed by a Spotify user. 
-    public func getListUsersPlaylists(config : Config__, userId : Text, limit : Nat, offset : Int) : async* PagingPlaylistObject {
+    public func getListUsersPlaylists(config : Config, userId : Text, limit : Nat, offset : Int) : async* PagingPlaylistObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/users/{user_id}/playlists"
             |> Text.replace(_, #text "{user_id}", userId)
@@ -903,7 +886,7 @@ module {
 
     /// Get User's Profile 
     /// Get public profile information about a Spotify user. 
-    public func getUsersProfile(config : Config__, userId : Text) : async* PublicUserObject {
+    public func getUsersProfile(config : Config, userId : Text) : async* PublicUserObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/users/{user_id}"
             |> Text.replace(_, #text "{user_id}", userId);
@@ -1048,7 +1031,7 @@ module {
 
     /// Get User's Top Items 
     /// Get the current user's top artists or tracks based on calculated affinity. 
-    public func getUsersTopArtistsAndTracks(config : Config__, type_ : Type_, timeRange : Text, limit : Nat, offset : Int) : async* GetUsersTopArtistsAndTracks200Response {
+    public func getUsersTopArtistsAndTracks(config : Config, type_ : Type_, timeRange : Text, limit : Nat, offset : Int) : async* GetUsersTopArtistsAndTracks200Response {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/top/{type}"
             |> Text.replace(_, #text "{type}", Type_.toJSON(type_))
@@ -1194,7 +1177,7 @@ module {
 
     /// Unfollow Artists or Users 
     /// Remove the current user as a follower of one or more artists or other Spotify users. 
-    public func unfollowArtistsUsers(config : Config__, type_ : ItemType2, ids : Text, unfollowArtistsUsersRequest : UnfollowArtistsUsersRequest) : async* () {
+    public func unfollowArtistsUsers(config : Config, type_ : ItemType2, ids : Text, unfollowArtistsUsersRequest : UnfollowArtistsUsersRequest) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/following"
             # "?" # "type=" # ItemType2.toJSON(type_) # "&" # "ids=" # ids;
@@ -1248,7 +1231,7 @@ module {
 
     /// Unfollow Playlist 
     /// Remove the current user as a follower of a playlist. 
-    public func unfollowPlaylist(config : Config__, playlistId : Text) : async* () {
+    public func unfollowPlaylist(config : Config, playlistId : Text) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/playlists/{playlist_id}/followers"
             |> Text.replace(_, #text "{playlist_id}", playlistId);
@@ -1310,7 +1293,7 @@ module {
         unfollowPlaylist;
     };
 
-    public module class UsersApi(config : Config__) {
+    public module class UsersApi(config : Config) {
         /// Check If User Follows Artists or Users 
         /// Check to see if the current user is following one or more artists or other Spotify users. 
         public func checkCurrentUserFollows(type_ : ItemType2, ids : Text) : async [Bool] {

@@ -11,6 +11,7 @@ import { type ChapterObject; JSON = ChapterObject } "../Models/ChapterObject";
 import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/GetAnAlbum401Response";
 import { type GetSeveralChapters200Response; JSON = GetSeveralChapters200Response } "../Models/GetSeveralChapters200Response";
 import { type PagingSimplifiedChapterObject; JSON = PagingSimplifiedChapterObject } "../Models/PagingSimplifiedChapterObject";
+import { type Config } "../Config";
 
 module {
     // Management Canister interface for HTTP outcalls
@@ -50,27 +51,9 @@ module {
     let http_request = (actor "aaaaa-aa" : actor { http_request : (http_request_args) -> async http_request_result }).http_request;
 
 
-    public type Auth__ = {
-        #bearer : Text;
-        #apiKey : Text;
-        #basicAuth : { user : Text; password : Text };
-    };
-
-    public type Config__ = {
-        baseUrl : Text;
-        auth : ?Auth__;
-        max_response_bytes : ?Nat64;
-        transform : ?{
-            function : shared query ({ response : http_request_result; context : Blob }) -> async http_request_result;
-            context : Blob;
-        };
-        is_replicated : ?Bool;
-        cycles : Nat;
-    };
-
     /// Get a Chapter 
     /// Get Spotify catalog information for a single audiobook chapter. Chapters are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
-    public func getAChapter(config : Config__, id : Text, market : Text) : async* ChapterObject {
+    public func getAChapter(config : Config, id : Text, market : Text) : async* ChapterObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/chapters/{id}"
             |> Text.replace(_, #text "{id}", id)
@@ -216,7 +199,7 @@ module {
 
     /// Get Audiobook Chapters 
     /// Get Spotify catalog information about an audiobook's chapters. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
-    public func getAudiobookChapters(config : Config__, id : Text, market : Text, limit : Nat, offset : Int) : async* PagingSimplifiedChapterObject {
+    public func getAudiobookChapters(config : Config, id : Text, market : Text, limit : Nat, offset : Int) : async* PagingSimplifiedChapterObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/audiobooks/{id}/chapters"
             |> Text.replace(_, #text "{id}", id)
@@ -362,7 +345,7 @@ module {
 
     /// Get Several Chapters 
     /// Get Spotify catalog information for several audiobook chapters identified by their Spotify IDs. Chapters are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
-    public func getSeveralChapters(config : Config__, ids : Text, market : Text) : async* GetSeveralChapters200Response {
+    public func getSeveralChapters(config : Config, ids : Text, market : Text) : async* GetSeveralChapters200Response {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/chapters"
             # "?" # "ids=" # ids # "&" # "market=" # market;
@@ -512,7 +495,7 @@ module {
         getSeveralChapters;
     };
 
-    public module class ChaptersApi(config : Config__) {
+    public module class ChaptersApi(config : Config) {
         /// Get a Chapter 
         /// Get Spotify catalog information for a single audiobook chapter. Chapters are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
         public func getAChapter(id : Text, market : Text) : async ChapterObject {

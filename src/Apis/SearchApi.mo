@@ -11,6 +11,7 @@ import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/G
 import { type IncludeExternal; JSON = IncludeExternal } "../Models/IncludeExternal";
 import { type ItemTypeInner; JSON = ItemTypeInner } "../Models/ItemTypeInner";
 import { type Search200Response; JSON = Search200Response } "../Models/Search200Response";
+import { type Config } "../Config";
 
 module {
     // Management Canister interface for HTTP outcalls
@@ -50,27 +51,9 @@ module {
     let http_request = (actor "aaaaa-aa" : actor { http_request : (http_request_args) -> async http_request_result }).http_request;
 
 
-    public type Auth__ = {
-        #bearer : Text;
-        #apiKey : Text;
-        #basicAuth : { user : Text; password : Text };
-    };
-
-    public type Config__ = {
-        baseUrl : Text;
-        auth : ?Auth__;
-        max_response_bytes : ?Nat64;
-        transform : ?{
-            function : shared query ({ response : http_request_result; context : Blob }) -> async http_request_result;
-            context : Blob;
-        };
-        is_replicated : ?Bool;
-        cycles : Nat;
-    };
-
     /// Search for Item 
     /// Get Spotify catalog information about albums, artists, playlists, tracks, shows, episodes or audiobooks that match a keyword string. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
-    public func search(config : Config__, q : Text, type_ : [ItemTypeInner], market : Text, limit : Nat, offset : Nat, includeExternal : IncludeExternal) : async* Search200Response {
+    public func search(config : Config, q : Text, type_ : [ItemTypeInner], market : Text, limit : Nat, offset : Nat, includeExternal : IncludeExternal) : async* Search200Response {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/search"
             # "?" # "q=" # q # "&" # "type=" # debug_show(type_) # "&" # "market=" # market # "&" # "limit=" # Int.toText(limit) # "&" # "offset=" # Int.toText(offset) # "&" # "include_external=" # IncludeExternal.toJSON(includeExternal);
@@ -218,7 +201,7 @@ module {
         search;
     };
 
-    public module class SearchApi(config : Config__) {
+    public module class SearchApi(config : Config) {
         /// Search for Item 
         /// Get Spotify catalog information about albums, artists, playlists, tracks, shows, episodes or audiobooks that match a keyword string. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
         public func search(q : Text, type_ : [ItemTypeInner], market : Text, limit : Nat, offset : Nat, includeExternal : IncludeExternal) : async Search200Response {

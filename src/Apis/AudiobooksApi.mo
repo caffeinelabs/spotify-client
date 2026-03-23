@@ -12,6 +12,7 @@ import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/G
 import { type GetMultipleAudiobooks200Response; JSON = GetMultipleAudiobooks200Response } "../Models/GetMultipleAudiobooks200Response";
 import { type PagingSimplifiedAudiobookObject; JSON = PagingSimplifiedAudiobookObject } "../Models/PagingSimplifiedAudiobookObject";
 import { type PagingSimplifiedChapterObject; JSON = PagingSimplifiedChapterObject } "../Models/PagingSimplifiedChapterObject";
+import { type Config } "../Config";
 
 module {
     // Management Canister interface for HTTP outcalls
@@ -51,27 +52,9 @@ module {
     let http_request = (actor "aaaaa-aa" : actor { http_request : (http_request_args) -> async http_request_result }).http_request;
 
 
-    public type Auth__ = {
-        #bearer : Text;
-        #apiKey : Text;
-        #basicAuth : { user : Text; password : Text };
-    };
-
-    public type Config__ = {
-        baseUrl : Text;
-        auth : ?Auth__;
-        max_response_bytes : ?Nat64;
-        transform : ?{
-            function : shared query ({ response : http_request_result; context : Blob }) -> async http_request_result;
-            context : Blob;
-        };
-        is_replicated : ?Bool;
-        cycles : Nat;
-    };
-
     /// Check User's Saved Audiobooks 
     /// Check if one or more audiobooks are already saved in the current Spotify user's library. 
-    public func checkUsersSavedAudiobooks(config : Config__, ids : Text) : async* [Bool] {
+    public func checkUsersSavedAudiobooks(config : Config, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/audiobooks/contains"
             # "?" # "ids=" # ids;
@@ -211,7 +194,7 @@ module {
 
     /// Get an Audiobook 
     /// Get Spotify catalog information for a single audiobook. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
-    public func getAnAudiobook(config : Config__, id : Text, market : Text) : async* AudiobookObject {
+    public func getAnAudiobook(config : Config, id : Text, market : Text) : async* AudiobookObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/audiobooks/{id}"
             |> Text.replace(_, #text "{id}", id)
@@ -399,7 +382,7 @@ module {
 
     /// Get Audiobook Chapters 
     /// Get Spotify catalog information about an audiobook's chapters. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
-    public func getAudiobookChapters(config : Config__, id : Text, market : Text, limit : Nat, offset : Int) : async* PagingSimplifiedChapterObject {
+    public func getAudiobookChapters(config : Config, id : Text, market : Text, limit : Nat, offset : Int) : async* PagingSimplifiedChapterObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/audiobooks/{id}/chapters"
             |> Text.replace(_, #text "{id}", id)
@@ -545,7 +528,7 @@ module {
 
     /// Get Several Audiobooks 
     /// Get Spotify catalog information for several audiobooks identified by their Spotify IDs. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
-    public func getMultipleAudiobooks(config : Config__, ids : Text, market : Text) : async* GetMultipleAudiobooks200Response {
+    public func getMultipleAudiobooks(config : Config, ids : Text, market : Text) : async* GetMultipleAudiobooks200Response {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/audiobooks"
             # "?" # "ids=" # ids # "&" # "market=" # market;
@@ -690,7 +673,7 @@ module {
 
     /// Get User's Saved Audiobooks 
     /// Get a list of the audiobooks saved in the current Spotify user's 'Your Music' library. 
-    public func getUsersSavedAudiobooks(config : Config__, limit : Nat, offset : Int) : async* PagingSimplifiedAudiobookObject {
+    public func getUsersSavedAudiobooks(config : Config, limit : Nat, offset : Int) : async* PagingSimplifiedAudiobookObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/audiobooks"
             # "?" # "limit=" # Int.toText(limit) # "&" # "offset=" # Int.toText(offset);
@@ -835,7 +818,7 @@ module {
 
     /// Remove User's Saved Audiobooks 
     /// Remove one or more audiobooks from the Spotify user's library. 
-    public func removeAudiobooksUser(config : Config__, ids : Text) : async* () {
+    public func removeAudiobooksUser(config : Config, ids : Text) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/audiobooks"
             # "?" # "ids=" # ids;
@@ -884,7 +867,7 @@ module {
 
     /// Save Audiobooks for Current User 
     /// Save one or more audiobooks to the current Spotify user's library. 
-    public func saveAudiobooksUser(config : Config__, ids : Text) : async* () {
+    public func saveAudiobooksUser(config : Config, ids : Text) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/audiobooks"
             # "?" # "ids=" # ids;
@@ -942,7 +925,7 @@ module {
         saveAudiobooksUser;
     };
 
-    public module class AudiobooksApi(config : Config__) {
+    public module class AudiobooksApi(config : Config) {
         /// Check User's Saved Audiobooks 
         /// Check if one or more audiobooks are already saved in the current Spotify user's library. 
         public func checkUsersSavedAudiobooks(ids : Text) : async [Bool] {

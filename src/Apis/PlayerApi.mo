@@ -14,6 +14,7 @@ import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/G
 import { type QueueObject; JSON = QueueObject } "../Models/QueueObject";
 import { type StartAUsersPlaybackRequest; JSON = StartAUsersPlaybackRequest } "../Models/StartAUsersPlaybackRequest";
 import { type TransferAUsersPlaybackRequest; JSON = TransferAUsersPlaybackRequest } "../Models/TransferAUsersPlaybackRequest";
+import { type Config } "../Config";
 
 module {
     // Management Canister interface for HTTP outcalls
@@ -53,27 +54,9 @@ module {
     let http_request = (actor "aaaaa-aa" : actor { http_request : (http_request_args) -> async http_request_result }).http_request;
 
 
-    public type Auth__ = {
-        #bearer : Text;
-        #apiKey : Text;
-        #basicAuth : { user : Text; password : Text };
-    };
-
-    public type Config__ = {
-        baseUrl : Text;
-        auth : ?Auth__;
-        max_response_bytes : ?Nat64;
-        transform : ?{
-            function : shared query ({ response : http_request_result; context : Blob }) -> async http_request_result;
-            context : Blob;
-        };
-        is_replicated : ?Bool;
-        cycles : Nat;
-    };
-
     /// Add Item to Playback Queue 
     /// Add an item to be played next in the user's current playback queue. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
-    public func addToQueue(config : Config__, uri : Text, deviceId : Text) : async* () {
+    public func addToQueue(config : Config, uri : Text, deviceId : Text) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/queue"
             # "?" # "uri=" # uri # "&" # "device_id=" # deviceId;
@@ -122,7 +105,7 @@ module {
 
     /// Get Available Devices 
     /// Get information about a user’s available Spotify Connect devices. Some device models are not supported and will not be listed in the API response. 
-    public func getAUsersAvailableDevices(config : Config__) : async* GetAUsersAvailableDevices200Response {
+    public func getAUsersAvailableDevices(config : Config) : async* GetAUsersAvailableDevices200Response {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/devices";
 
@@ -266,7 +249,7 @@ module {
 
     /// Get Playback State 
     /// Get information about the user’s current playback state, including track or episode, progress, and active device. 
-    public func getInformationAboutTheUsersCurrentPlayback(config : Config__, market : Text, additionalTypes : Text) : async* CurrentlyPlayingContextObject {
+    public func getInformationAboutTheUsersCurrentPlayback(config : Config, market : Text, additionalTypes : Text) : async* CurrentlyPlayingContextObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player"
             # "?" # "market=" # market # "&" # "additional_types=" # additionalTypes;
@@ -411,7 +394,7 @@ module {
 
     /// Get the User's Queue 
     /// Get the list of objects that make up the user's queue. 
-    public func getQueue(config : Config__) : async* QueueObject {
+    public func getQueue(config : Config) : async* QueueObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/queue";
 
@@ -555,7 +538,7 @@ module {
 
     /// Get Recently Played Tracks 
     /// Get tracks from the current user's recently played tracks. _**Note**: Currently doesn't support podcast episodes._ 
-    public func getRecentlyPlayed(config : Config__, limit : Nat, after : Int, before : Int) : async* CursorPagingPlayHistoryObject {
+    public func getRecentlyPlayed(config : Config, limit : Nat, after : Int, before : Int) : async* CursorPagingPlayHistoryObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/recently-played"
             # "?" # "limit=" # Int.toText(limit) # "&" # "after=" # Int.toText(after) # "&" # "before=" # Int.toText(before);
@@ -700,7 +683,7 @@ module {
 
     /// Get Currently Playing Track 
     /// Get the object currently being played on the user's Spotify account. 
-    public func getTheUsersCurrentlyPlayingTrack(config : Config__, market : Text, additionalTypes : Text) : async* CurrentlyPlayingContextObject {
+    public func getTheUsersCurrentlyPlayingTrack(config : Config, market : Text, additionalTypes : Text) : async* CurrentlyPlayingContextObject {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/currently-playing"
             # "?" # "market=" # market # "&" # "additional_types=" # additionalTypes;
@@ -845,7 +828,7 @@ module {
 
     /// Pause Playback 
     /// Pause playback on the user's account. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
-    public func pauseAUsersPlayback(config : Config__, deviceId : Text) : async* () {
+    public func pauseAUsersPlayback(config : Config, deviceId : Text) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/pause"
             # "?" # "device_id=" # deviceId;
@@ -894,7 +877,7 @@ module {
 
     /// Seek To Position 
     /// Seeks to the given position in the user’s currently playing track. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
-    public func seekToPositionInCurrentlyPlayingTrack(config : Config__, positionMs : Int, deviceId : Text) : async* () {
+    public func seekToPositionInCurrentlyPlayingTrack(config : Config, positionMs : Int, deviceId : Text) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/seek"
             # "?" # "position_ms=" # Int.toText(positionMs) # "&" # "device_id=" # deviceId;
@@ -943,7 +926,7 @@ module {
 
     /// Set Repeat Mode 
     /// Set the repeat mode for the user's playback. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
-    public func setRepeatModeOnUsersPlayback(config : Config__, state : Text, deviceId : Text) : async* () {
+    public func setRepeatModeOnUsersPlayback(config : Config, state : Text, deviceId : Text) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/repeat"
             # "?" # "state=" # state # "&" # "device_id=" # deviceId;
@@ -992,7 +975,7 @@ module {
 
     /// Set Playback Volume 
     /// Set the volume for the user’s current playback device. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
-    public func setVolumeForUsersPlayback(config : Config__, volumePercent : Int, deviceId : Text) : async* () {
+    public func setVolumeForUsersPlayback(config : Config, volumePercent : Int, deviceId : Text) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/volume"
             # "?" # "volume_percent=" # Int.toText(volumePercent) # "&" # "device_id=" # deviceId;
@@ -1041,7 +1024,7 @@ module {
 
     /// Skip To Next 
     /// Skips to next track in the user’s queue. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
-    public func skipUsersPlaybackToNextTrack(config : Config__, deviceId : Text) : async* () {
+    public func skipUsersPlaybackToNextTrack(config : Config, deviceId : Text) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/next"
             # "?" # "device_id=" # deviceId;
@@ -1090,7 +1073,7 @@ module {
 
     /// Skip To Previous 
     /// Skips to previous track in the user’s queue. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
-    public func skipUsersPlaybackToPreviousTrack(config : Config__, deviceId : Text) : async* () {
+    public func skipUsersPlaybackToPreviousTrack(config : Config, deviceId : Text) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/previous"
             # "?" # "device_id=" # deviceId;
@@ -1139,7 +1122,7 @@ module {
 
     /// Start/Resume Playback 
     /// Start a new context or resume current playback on the user's active device. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
-    public func startAUsersPlayback(config : Config__, deviceId : Text, startAUsersPlaybackRequest : StartAUsersPlaybackRequest) : async* () {
+    public func startAUsersPlayback(config : Config, deviceId : Text, startAUsersPlaybackRequest : StartAUsersPlaybackRequest) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/play"
             # "?" # "device_id=" # deviceId;
@@ -1193,7 +1176,7 @@ module {
 
     /// Toggle Playback Shuffle 
     /// Toggle shuffle on or off for user’s playback. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
-    public func toggleShuffleForUsersPlayback(config : Config__, state : Bool, deviceId : Text) : async* () {
+    public func toggleShuffleForUsersPlayback(config : Config, state : Bool, deviceId : Text) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/shuffle"
             # "?" # "state=" # debug_show(state) # "&" # "device_id=" # deviceId;
@@ -1242,7 +1225,7 @@ module {
 
     /// Transfer Playback 
     /// Transfer playback to a new device and optionally begin playback. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
-    public func transferAUsersPlayback(config : Config__, transferAUsersPlaybackRequest : TransferAUsersPlaybackRequest) : async* () {
+    public func transferAUsersPlayback(config : Config, transferAUsersPlaybackRequest : TransferAUsersPlaybackRequest) : async* () {
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player";
 
@@ -1312,7 +1295,7 @@ module {
         transferAUsersPlayback;
     };
 
-    public module class PlayerApi(config : Config__) {
+    public module class PlayerApi(config : Config) {
         /// Add Item to Playback Queue 
         /// Add an item to be played next in the user's current playback queue. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
         public func addToQueue(uri : Text, deviceId : Text) : async () {
