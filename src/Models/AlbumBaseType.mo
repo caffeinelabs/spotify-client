@@ -1,6 +1,6 @@
+/// The object type. 
 
 // AlbumBaseType.mo
-/// The object type. 
 /// Enum values: #album
 
 module {

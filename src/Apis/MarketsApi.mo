@@ -6,7 +6,7 @@ import Blob "mo:core/Blob";
 import Array "mo:core/Array";
 import Error "mo:core/Error";
 import Base64 "mo:core/Base64";
-import { JSON } "mo:serde-core";
+import { JSON } "mo:serde";
 import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/GetAnAlbum401Response";
 import { type GetAvailableMarkets200Response; JSON = GetAvailableMarkets200Response } "../Models/GetAvailableMarkets200Response";
 import { type Config } "../Config";
@@ -50,6 +50,7 @@ module {
 
 
     /// Get Available Markets 
+    ///
     /// Get the list of markets where Spotify is available. 
     public func getAvailableMarkets(config : Config) : async* GetAvailableMarkets200Response {
         let {baseUrl; cycles} = config;
@@ -200,6 +201,7 @@ module {
 
     public module class MarketsApi(config : Config) {
         /// Get Available Markets 
+        ///
         /// Get the list of markets where Spotify is available. 
         public func getAvailableMarkets() : async GetAvailableMarkets200Response {
             await* operations__.getAvailableMarkets(config)

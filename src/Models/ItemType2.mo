@@ -1,6 +1,6 @@
+/// The ID type: either `artist` or `user`. 
 
 // ItemType2.mo
-/// The ID type: either `artist` or `user`. 
 /// Enum values: #artist, #user
 
 module {

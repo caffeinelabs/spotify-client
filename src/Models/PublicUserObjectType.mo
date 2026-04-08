@@ -1,6 +1,6 @@
+/// The object type. 
 
 // PublicUserObjectType.mo
-/// The object type. 
 /// Enum values: #user
 
 module {

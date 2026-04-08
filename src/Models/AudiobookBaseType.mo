@@ -1,6 +1,6 @@
+/// The object type. 
 
 // AudiobookBaseType.mo
-/// The object type. 
 /// Enum values: #audiobook
 
 module {

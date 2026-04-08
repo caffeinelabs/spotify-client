@@ -1,6 +1,6 @@
+/// The object type. 
 
 // ArtistObjectType.mo
-/// The object type. 
 /// Enum values: #artist
 
 module {

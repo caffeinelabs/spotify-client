@@ -1,6 +1,6 @@
+/// The object type. 
 
 // EpisodeBaseType.mo
-/// The object type. 
 /// Enum values: #episode
 
 module {

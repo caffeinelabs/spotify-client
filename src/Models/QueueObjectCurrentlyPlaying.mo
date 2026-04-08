@@ -1,3 +1,4 @@
+/// The currently playing track or episode. Can be `null`.
 
 import { type EpisodeBaseReleaseDatePrecision; JSON = EpisodeBaseReleaseDatePrecision } "./EpisodeBaseReleaseDatePrecision";
 
@@ -24,7 +25,6 @@ import { type SimplifiedShowObject; JSON = SimplifiedShowObject } "./SimplifiedS
 import { type TrackObject; JSON = TrackObject } "./TrackObject";
 
 // QueueObjectCurrentlyPlaying.mo
-/// The currently playing track or episode. Can be `null`.
 import Runtime "mo:core/Runtime";
 
 module {

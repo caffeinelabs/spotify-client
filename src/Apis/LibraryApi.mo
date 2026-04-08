@@ -6,7 +6,7 @@ import Blob "mo:core/Blob";
 import Array "mo:core/Array";
 import Error "mo:core/Error";
 import Base64 "mo:core/Base64";
-import { JSON } "mo:serde-core";
+import { JSON } "mo:serde";
 import { type ChangePlaylistDetailsRequest; JSON = ChangePlaylistDetailsRequest } "../Models/ChangePlaylistDetailsRequest";
 import { type CreatePlaylistRequest; JSON = CreatePlaylistRequest } "../Models/CreatePlaylistRequest";
 import { type FollowArtistsUsersRequest; JSON = FollowArtistsUsersRequest } "../Models/FollowArtistsUsersRequest";
@@ -70,6 +70,7 @@ module {
 
 
     /// Change Playlist Details 
+    ///
     /// Change a playlist's name and public/private state. (The user must, of course, own the playlist.) 
     public func changePlaylistDetails(config : Config, playlistId : Text, changePlaylistDetailsRequest : ChangePlaylistDetailsRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -124,6 +125,7 @@ module {
     };
 
     /// Check If User Follows Artists or Users 
+    ///
     /// Check to see if the current user is following one or more artists or other Spotify users. 
     public func checkCurrentUserFollows(config : Config, type_ : ItemType2, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
@@ -264,6 +266,7 @@ module {
     };
 
     /// Check User's Saved Albums 
+    ///
     /// Check if one or more albums is already saved in the current Spotify user's 'Your Music' library. 
     public func checkUsersSavedAlbums(config : Config, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
@@ -404,6 +407,7 @@ module {
     };
 
     /// Check User's Saved Audiobooks 
+    ///
     /// Check if one or more audiobooks are already saved in the current Spotify user's library. 
     public func checkUsersSavedAudiobooks(config : Config, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
@@ -544,6 +548,7 @@ module {
     };
 
     /// Check User's Saved Episodes 
+    ///
     /// Check if one or more episodes is already saved in the current Spotify user's 'Your Episodes' library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer).. 
     public func checkUsersSavedEpisodes(config : Config, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
@@ -684,6 +689,7 @@ module {
     };
 
     /// Check User's Saved Shows 
+    ///
     /// Check if one or more shows is already saved in the current Spotify user's library. 
     public func checkUsersSavedShows(config : Config, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
@@ -824,6 +830,7 @@ module {
     };
 
     /// Check User's Saved Tracks 
+    ///
     /// Check if one or more tracks is already saved in the current Spotify user's 'Your Music' library. 
     public func checkUsersSavedTracks(config : Config, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
@@ -964,6 +971,7 @@ module {
     };
 
     /// Create Playlist 
+    ///
     /// Create a playlist for a Spotify user. (The playlist will be empty until you [add tracks](/documentation/web-api/reference/add-tracks-to-playlist).) Each user is generally limited to a maximum of 11000 playlists. 
     public func createPlaylist(config : Config, userId : Text, createPlaylistRequest : CreatePlaylistRequest) : async* PlaylistObject {
         let {baseUrl; cycles} = config;
@@ -1114,6 +1122,7 @@ module {
     };
 
     /// Follow Artists or Users 
+    ///
     /// Add the current user as a follower of one or more artists or other Spotify users. 
     public func followArtistsUsers(config : Config, type_ : ItemType1, ids : Text, followArtistsUsersRequest : FollowArtistsUsersRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -1168,6 +1177,7 @@ module {
     };
 
     /// Get Current User's Playlists 
+    ///
     /// Get a list of the playlists owned or followed by the current Spotify user. 
     public func getAListOfCurrentUsersPlaylists(config : Config, limit : Nat, offset : Int) : async* PagingPlaylistObject {
         let {baseUrl; cycles} = config;
@@ -1313,6 +1323,7 @@ module {
     };
 
     /// Get Followed Artists 
+    ///
     /// Get the current user's followed artists. 
     public func getFollowed(config : Config, type_ : ItemType, after : Text, limit : Nat) : async* GetFollowed200Response {
         let {baseUrl; cycles} = config;
@@ -1458,6 +1469,7 @@ module {
     };
 
     /// Get User's Saved Albums 
+    ///
     /// Get a list of the albums saved in the current Spotify user's 'Your Music' library. 
     public func getUsersSavedAlbums(config : Config, limit : Nat, offset : Int, market : Text) : async* PagingSavedAlbumObject {
         let {baseUrl; cycles} = config;
@@ -1603,6 +1615,7 @@ module {
     };
 
     /// Get User's Saved Audiobooks 
+    ///
     /// Get a list of the audiobooks saved in the current Spotify user's 'Your Music' library. 
     public func getUsersSavedAudiobooks(config : Config, limit : Nat, offset : Int) : async* PagingSimplifiedAudiobookObject {
         let {baseUrl; cycles} = config;
@@ -1748,6 +1761,7 @@ module {
     };
 
     /// Get User's Saved Episodes 
+    ///
     /// Get a list of the episodes saved in the current Spotify user's library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer). 
     public func getUsersSavedEpisodes(config : Config, market : Text, limit : Nat, offset : Int) : async* PagingSavedEpisodeObject {
         let {baseUrl; cycles} = config;
@@ -1893,6 +1907,7 @@ module {
     };
 
     /// Get User's Saved Shows 
+    ///
     /// Get a list of shows saved in the current Spotify user's library. Optional parameters can be used to limit the number of shows returned. 
     public func getUsersSavedShows(config : Config, limit : Nat, offset : Int) : async* PagingSavedShowObject {
         let {baseUrl; cycles} = config;
@@ -2038,6 +2053,7 @@ module {
     };
 
     /// Get User's Saved Tracks 
+    ///
     /// Get a list of the songs saved in the current Spotify user's 'Your Music' library. 
     public func getUsersSavedTracks(config : Config, market : Text, limit : Nat, offset : Int) : async* PagingSavedTrackObject {
         let {baseUrl; cycles} = config;
@@ -2183,6 +2199,7 @@ module {
     };
 
     /// Get User's Top Items 
+    ///
     /// Get the current user's top artists or tracks based on calculated affinity. 
     public func getUsersTopArtistsAndTracks(config : Config, type_ : Type_, timeRange : Text, limit : Nat, offset : Int) : async* GetUsersTopArtistsAndTracks200Response {
         let {baseUrl; cycles} = config;
@@ -2329,6 +2346,7 @@ module {
     };
 
     /// Remove Users' Saved Albums 
+    ///
     /// Remove one or more albums from the current user's 'Your Music' library. 
     public func removeAlbumsUser(config : Config, ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -2383,6 +2401,7 @@ module {
     };
 
     /// Remove User's Saved Audiobooks 
+    ///
     /// Remove one or more audiobooks from the Spotify user's library. 
     public func removeAudiobooksUser(config : Config, ids : Text) : async* () {
         let {baseUrl; cycles} = config;
@@ -2432,6 +2451,7 @@ module {
     };
 
     /// Remove User's Saved Episodes 
+    ///
     /// Remove one or more episodes from the current user's library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer). 
     public func removeEpisodesUser(config : Config, ids : Text, removeEpisodesUserRequest : RemoveEpisodesUserRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -2486,6 +2506,7 @@ module {
     };
 
     /// Remove User's Saved Shows 
+    ///
     /// Delete one or more shows from current Spotify user's library. 
     public func removeShowsUser(config : Config, ids : Text, market : Text) : async* () {
         let {baseUrl; cycles} = config;
@@ -2535,6 +2556,7 @@ module {
     };
 
     /// Remove User's Saved Tracks 
+    ///
     /// Remove one or more tracks from the current user's 'Your Music' library. 
     public func removeTracksUser(config : Config, ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -2589,6 +2611,7 @@ module {
     };
 
     /// Save Albums for Current User 
+    ///
     /// Save one or more albums to the current user's 'Your Music' library. 
     public func saveAlbumsUser(config : Config, ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -2643,6 +2666,7 @@ module {
     };
 
     /// Save Audiobooks for Current User 
+    ///
     /// Save one or more audiobooks to the current Spotify user's library. 
     public func saveAudiobooksUser(config : Config, ids : Text) : async* () {
         let {baseUrl; cycles} = config;
@@ -2692,6 +2716,7 @@ module {
     };
 
     /// Save Episodes for Current User 
+    ///
     /// Save one or more episodes to the current user's library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer). 
     public func saveEpisodesUser(config : Config, ids : Text, saveEpisodesUserRequest : SaveEpisodesUserRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -2746,6 +2771,7 @@ module {
     };
 
     /// Save Shows for Current User 
+    ///
     /// Save one or more shows to current Spotify user's library. 
     public func saveShowsUser(config : Config, ids : Text) : async* () {
         let {baseUrl; cycles} = config;
@@ -2795,6 +2821,7 @@ module {
     };
 
     /// Save Tracks for Current User 
+    ///
     /// Save one or more tracks to the current user's 'Your Music' library. 
     public func saveTracksUser(config : Config, saveTracksUserRequest : SaveTracksUserRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -2848,6 +2875,7 @@ module {
     };
 
     /// Unfollow Artists or Users 
+    ///
     /// Remove the current user as a follower of one or more artists or other Spotify users. 
     public func unfollowArtistsUsers(config : Config, type_ : ItemType2, ids : Text, unfollowArtistsUsersRequest : UnfollowArtistsUsersRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -2935,168 +2963,196 @@ module {
 
     public module class LibraryApi(config : Config) {
         /// Change Playlist Details 
+        ///
         /// Change a playlist's name and public/private state. (The user must, of course, own the playlist.) 
         public func changePlaylistDetails(playlistId : Text, changePlaylistDetailsRequest : ChangePlaylistDetailsRequest) : async () {
             await* operations__.changePlaylistDetails(config, playlistId, changePlaylistDetailsRequest)
         };
 
         /// Check If User Follows Artists or Users 
+        ///
         /// Check to see if the current user is following one or more artists or other Spotify users. 
         public func checkCurrentUserFollows(type_ : ItemType2, ids : Text) : async [Bool] {
             await* operations__.checkCurrentUserFollows(config, type_, ids)
         };
 
         /// Check User's Saved Albums 
+        ///
         /// Check if one or more albums is already saved in the current Spotify user's 'Your Music' library. 
         public func checkUsersSavedAlbums(ids : Text) : async [Bool] {
             await* operations__.checkUsersSavedAlbums(config, ids)
         };
 
         /// Check User's Saved Audiobooks 
+        ///
         /// Check if one or more audiobooks are already saved in the current Spotify user's library. 
         public func checkUsersSavedAudiobooks(ids : Text) : async [Bool] {
             await* operations__.checkUsersSavedAudiobooks(config, ids)
         };
 
         /// Check User's Saved Episodes 
+        ///
         /// Check if one or more episodes is already saved in the current Spotify user's 'Your Episodes' library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer).. 
         public func checkUsersSavedEpisodes(ids : Text) : async [Bool] {
             await* operations__.checkUsersSavedEpisodes(config, ids)
         };
 
         /// Check User's Saved Shows 
+        ///
         /// Check if one or more shows is already saved in the current Spotify user's library. 
         public func checkUsersSavedShows(ids : Text) : async [Bool] {
             await* operations__.checkUsersSavedShows(config, ids)
         };
 
         /// Check User's Saved Tracks 
+        ///
         /// Check if one or more tracks is already saved in the current Spotify user's 'Your Music' library. 
         public func checkUsersSavedTracks(ids : Text) : async [Bool] {
             await* operations__.checkUsersSavedTracks(config, ids)
         };
 
         /// Create Playlist 
+        ///
         /// Create a playlist for a Spotify user. (The playlist will be empty until you [add tracks](/documentation/web-api/reference/add-tracks-to-playlist).) Each user is generally limited to a maximum of 11000 playlists. 
         public func createPlaylist(userId : Text, createPlaylistRequest : CreatePlaylistRequest) : async PlaylistObject {
             await* operations__.createPlaylist(config, userId, createPlaylistRequest)
         };
 
         /// Follow Artists or Users 
+        ///
         /// Add the current user as a follower of one or more artists or other Spotify users. 
         public func followArtistsUsers(type_ : ItemType1, ids : Text, followArtistsUsersRequest : FollowArtistsUsersRequest) : async () {
             await* operations__.followArtistsUsers(config, type_, ids, followArtistsUsersRequest)
         };
 
         /// Get Current User's Playlists 
+        ///
         /// Get a list of the playlists owned or followed by the current Spotify user. 
         public func getAListOfCurrentUsersPlaylists(limit : Nat, offset : Int) : async PagingPlaylistObject {
             await* operations__.getAListOfCurrentUsersPlaylists(config, limit, offset)
         };
 
         /// Get Followed Artists 
+        ///
         /// Get the current user's followed artists. 
         public func getFollowed(type_ : ItemType, after : Text, limit : Nat) : async GetFollowed200Response {
             await* operations__.getFollowed(config, type_, after, limit)
         };
 
         /// Get User's Saved Albums 
+        ///
         /// Get a list of the albums saved in the current Spotify user's 'Your Music' library. 
         public func getUsersSavedAlbums(limit : Nat, offset : Int, market : Text) : async PagingSavedAlbumObject {
             await* operations__.getUsersSavedAlbums(config, limit, offset, market)
         };
 
         /// Get User's Saved Audiobooks 
+        ///
         /// Get a list of the audiobooks saved in the current Spotify user's 'Your Music' library. 
         public func getUsersSavedAudiobooks(limit : Nat, offset : Int) : async PagingSimplifiedAudiobookObject {
             await* operations__.getUsersSavedAudiobooks(config, limit, offset)
         };
 
         /// Get User's Saved Episodes 
+        ///
         /// Get a list of the episodes saved in the current Spotify user's library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer). 
         public func getUsersSavedEpisodes(market : Text, limit : Nat, offset : Int) : async PagingSavedEpisodeObject {
             await* operations__.getUsersSavedEpisodes(config, market, limit, offset)
         };
 
         /// Get User's Saved Shows 
+        ///
         /// Get a list of shows saved in the current Spotify user's library. Optional parameters can be used to limit the number of shows returned. 
         public func getUsersSavedShows(limit : Nat, offset : Int) : async PagingSavedShowObject {
             await* operations__.getUsersSavedShows(config, limit, offset)
         };
 
         /// Get User's Saved Tracks 
+        ///
         /// Get a list of the songs saved in the current Spotify user's 'Your Music' library. 
         public func getUsersSavedTracks(market : Text, limit : Nat, offset : Int) : async PagingSavedTrackObject {
             await* operations__.getUsersSavedTracks(config, market, limit, offset)
         };
 
         /// Get User's Top Items 
+        ///
         /// Get the current user's top artists or tracks based on calculated affinity. 
         public func getUsersTopArtistsAndTracks(type_ : Type_, timeRange : Text, limit : Nat, offset : Int) : async GetUsersTopArtistsAndTracks200Response {
             await* operations__.getUsersTopArtistsAndTracks(config, type_, timeRange, limit, offset)
         };
 
         /// Remove Users' Saved Albums 
+        ///
         /// Remove one or more albums from the current user's 'Your Music' library. 
         public func removeAlbumsUser(ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async () {
             await* operations__.removeAlbumsUser(config, ids, saveAlbumsUserRequest)
         };
 
         /// Remove User's Saved Audiobooks 
+        ///
         /// Remove one or more audiobooks from the Spotify user's library. 
         public func removeAudiobooksUser(ids : Text) : async () {
             await* operations__.removeAudiobooksUser(config, ids)
         };
 
         /// Remove User's Saved Episodes 
+        ///
         /// Remove one or more episodes from the current user's library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer). 
         public func removeEpisodesUser(ids : Text, removeEpisodesUserRequest : RemoveEpisodesUserRequest) : async () {
             await* operations__.removeEpisodesUser(config, ids, removeEpisodesUserRequest)
         };
 
         /// Remove User's Saved Shows 
+        ///
         /// Delete one or more shows from current Spotify user's library. 
         public func removeShowsUser(ids : Text, market : Text) : async () {
             await* operations__.removeShowsUser(config, ids, market)
         };
 
         /// Remove User's Saved Tracks 
+        ///
         /// Remove one or more tracks from the current user's 'Your Music' library. 
         public func removeTracksUser(ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async () {
             await* operations__.removeTracksUser(config, ids, saveAlbumsUserRequest)
         };
 
         /// Save Albums for Current User 
+        ///
         /// Save one or more albums to the current user's 'Your Music' library. 
         public func saveAlbumsUser(ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async () {
             await* operations__.saveAlbumsUser(config, ids, saveAlbumsUserRequest)
         };
 
         /// Save Audiobooks for Current User 
+        ///
         /// Save one or more audiobooks to the current Spotify user's library. 
         public func saveAudiobooksUser(ids : Text) : async () {
             await* operations__.saveAudiobooksUser(config, ids)
         };
 
         /// Save Episodes for Current User 
+        ///
         /// Save one or more episodes to the current user's library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer). 
         public func saveEpisodesUser(ids : Text, saveEpisodesUserRequest : SaveEpisodesUserRequest) : async () {
             await* operations__.saveEpisodesUser(config, ids, saveEpisodesUserRequest)
         };
 
         /// Save Shows for Current User 
+        ///
         /// Save one or more shows to current Spotify user's library. 
         public func saveShowsUser(ids : Text) : async () {
             await* operations__.saveShowsUser(config, ids)
         };
 
         /// Save Tracks for Current User 
+        ///
         /// Save one or more tracks to the current user's 'Your Music' library. 
         public func saveTracksUser(saveTracksUserRequest : SaveTracksUserRequest) : async () {
             await* operations__.saveTracksUser(config, saveTracksUserRequest)
         };
 
         /// Unfollow Artists or Users 
+        ///
         /// Remove the current user as a follower of one or more artists or other Spotify users. 
         public func unfollowArtistsUsers(type_ : ItemType2, ids : Text, unfollowArtistsUsersRequest : UnfollowArtistsUsersRequest) : async () {
             await* operations__.unfollowArtistsUsers(config, type_, ids, unfollowArtistsUsersRequest)

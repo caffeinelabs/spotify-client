@@ -1,6 +1,6 @@
+/// The type of entity to return. Valid values: `artists` or `tracks` 
 
 // Type_.mo
-/// The type of entity to return. Valid values: `artists` or `tracks` 
 /// Enum values: #artists, #tracks
 
 module {

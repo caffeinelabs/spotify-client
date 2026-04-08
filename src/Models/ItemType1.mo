@@ -1,6 +1,6 @@
+/// The ID type. 
 
 // ItemType1.mo
-/// The ID type. 
 /// Enum values: #artist, #user
 
 module {

@@ -1,6 +1,6 @@
+/// The precision with which `release_date` value is known. 
 
 // EpisodeBaseReleaseDatePrecision.mo
-/// The precision with which `release_date` value is known. 
 /// Enum values: #year, #month, #day
 
 module {

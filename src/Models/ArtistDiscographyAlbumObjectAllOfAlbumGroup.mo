@@ -1,6 +1,6 @@
+/// This field describes the relationship between the artist and the album. 
 
 // ArtistDiscographyAlbumObjectAllOfAlbumGroup.mo
-/// This field describes the relationship between the artist and the album. 
 /// Enum values: #album, #single, #compilation, #appears_on
 
 module {

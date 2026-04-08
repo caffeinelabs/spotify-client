@@ -6,7 +6,7 @@ import Blob "mo:core/Blob";
 import Array "mo:core/Array";
 import Error "mo:core/Error";
 import Base64 "mo:core/Base64";
-import { JSON } "mo:serde-core";
+import { JSON } "mo:serde";
 import { type EpisodeObject; JSON = EpisodeObject } "../Models/EpisodeObject";
 import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/GetAnAlbum401Response";
 import { type GetMultipleEpisodes200Response; JSON = GetMultipleEpisodes200Response } "../Models/GetMultipleEpisodes200Response";
@@ -55,6 +55,7 @@ module {
 
 
     /// Check User's Saved Episodes 
+    ///
     /// Check if one or more episodes is already saved in the current Spotify user's 'Your Episodes' library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer).. 
     public func checkUsersSavedEpisodes(config : Config, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
@@ -195,6 +196,7 @@ module {
     };
 
     /// Get Show Episodes 
+    ///
     /// Get Spotify catalog information about an show’s episodes. Optional parameters can be used to limit the number of episodes returned. 
     public func getAShowsEpisodes(config : Config, id : Text, market : Text, limit : Nat, offset : Int) : async* PagingSimplifiedEpisodeObject {
         let {baseUrl; cycles} = config;
@@ -341,6 +343,7 @@ module {
     };
 
     /// Get Episode 
+    ///
     /// Get Spotify catalog information for a single episode identified by its unique Spotify ID. 
     public func getAnEpisode(config : Config, id : Text, market : Text) : async* EpisodeObject {
         let {baseUrl; cycles} = config;
@@ -487,6 +490,7 @@ module {
     };
 
     /// Get Several Episodes 
+    ///
     /// Get Spotify catalog information for several episodes based on their Spotify IDs. 
     public func getMultipleEpisodes(config : Config, ids : Text, market : Text) : async* GetMultipleEpisodes200Response {
         let {baseUrl; cycles} = config;
@@ -632,6 +636,7 @@ module {
     };
 
     /// Get User's Saved Episodes 
+    ///
     /// Get a list of the episodes saved in the current Spotify user's library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer). 
     public func getUsersSavedEpisodes(config : Config, market : Text, limit : Nat, offset : Int) : async* PagingSavedEpisodeObject {
         let {baseUrl; cycles} = config;
@@ -777,6 +782,7 @@ module {
     };
 
     /// Remove User's Saved Episodes 
+    ///
     /// Remove one or more episodes from the current user's library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer). 
     public func removeEpisodesUser(config : Config, ids : Text, removeEpisodesUserRequest : RemoveEpisodesUserRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -831,6 +837,7 @@ module {
     };
 
     /// Save Episodes for Current User 
+    ///
     /// Save one or more episodes to the current user's library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer). 
     public func saveEpisodesUser(config : Config, ids : Text, saveEpisodesUserRequest : SaveEpisodesUserRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -897,42 +904,49 @@ module {
 
     public module class EpisodesApi(config : Config) {
         /// Check User's Saved Episodes 
+        ///
         /// Check if one or more episodes is already saved in the current Spotify user's 'Your Episodes' library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer).. 
         public func checkUsersSavedEpisodes(ids : Text) : async [Bool] {
             await* operations__.checkUsersSavedEpisodes(config, ids)
         };
 
         /// Get Show Episodes 
+        ///
         /// Get Spotify catalog information about an show’s episodes. Optional parameters can be used to limit the number of episodes returned. 
         public func getAShowsEpisodes(id : Text, market : Text, limit : Nat, offset : Int) : async PagingSimplifiedEpisodeObject {
             await* operations__.getAShowsEpisodes(config, id, market, limit, offset)
         };
 
         /// Get Episode 
+        ///
         /// Get Spotify catalog information for a single episode identified by its unique Spotify ID. 
         public func getAnEpisode(id : Text, market : Text) : async EpisodeObject {
             await* operations__.getAnEpisode(config, id, market)
         };
 
         /// Get Several Episodes 
+        ///
         /// Get Spotify catalog information for several episodes based on their Spotify IDs. 
         public func getMultipleEpisodes(ids : Text, market : Text) : async GetMultipleEpisodes200Response {
             await* operations__.getMultipleEpisodes(config, ids, market)
         };
 
         /// Get User's Saved Episodes 
+        ///
         /// Get a list of the episodes saved in the current Spotify user's library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer). 
         public func getUsersSavedEpisodes(market : Text, limit : Nat, offset : Int) : async PagingSavedEpisodeObject {
             await* operations__.getUsersSavedEpisodes(config, market, limit, offset)
         };
 
         /// Remove User's Saved Episodes 
+        ///
         /// Remove one or more episodes from the current user's library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer). 
         public func removeEpisodesUser(ids : Text, removeEpisodesUserRequest : RemoveEpisodesUserRequest) : async () {
             await* operations__.removeEpisodesUser(config, ids, removeEpisodesUserRequest)
         };
 
         /// Save Episodes for Current User 
+        ///
         /// Save one or more episodes to the current user's library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer). 
         public func saveEpisodesUser(ids : Text, saveEpisodesUserRequest : SaveEpisodesUserRequest) : async () {
             await* operations__.saveEpisodesUser(config, ids, saveEpisodesUserRequest)

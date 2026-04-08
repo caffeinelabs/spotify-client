@@ -6,7 +6,7 @@ import Blob "mo:core/Blob";
 import Array "mo:core/Array";
 import Error "mo:core/Error";
 import Base64 "mo:core/Base64";
-import { JSON } "mo:serde-core";
+import { JSON } "mo:serde";
 import { type ChapterObject; JSON = ChapterObject } "../Models/ChapterObject";
 import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/GetAnAlbum401Response";
 import { type GetSeveralChapters200Response; JSON = GetSeveralChapters200Response } "../Models/GetSeveralChapters200Response";
@@ -52,6 +52,7 @@ module {
 
 
     /// Get a Chapter 
+    ///
     /// Get Spotify catalog information for a single audiobook chapter. Chapters are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
     public func getAChapter(config : Config, id : Text, market : Text) : async* ChapterObject {
         let {baseUrl; cycles} = config;
@@ -198,6 +199,7 @@ module {
     };
 
     /// Get Audiobook Chapters 
+    ///
     /// Get Spotify catalog information about an audiobook's chapters. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
     public func getAudiobookChapters(config : Config, id : Text, market : Text, limit : Nat, offset : Int) : async* PagingSimplifiedChapterObject {
         let {baseUrl; cycles} = config;
@@ -344,6 +346,7 @@ module {
     };
 
     /// Get Several Chapters 
+    ///
     /// Get Spotify catalog information for several audiobook chapters identified by their Spotify IDs. Chapters are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
     public func getSeveralChapters(config : Config, ids : Text, market : Text) : async* GetSeveralChapters200Response {
         let {baseUrl; cycles} = config;
@@ -497,18 +500,21 @@ module {
 
     public module class ChaptersApi(config : Config) {
         /// Get a Chapter 
+        ///
         /// Get Spotify catalog information for a single audiobook chapter. Chapters are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
         public func getAChapter(id : Text, market : Text) : async ChapterObject {
             await* operations__.getAChapter(config, id, market)
         };
 
         /// Get Audiobook Chapters 
+        ///
         /// Get Spotify catalog information about an audiobook's chapters. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
         public func getAudiobookChapters(id : Text, market : Text, limit : Nat, offset : Int) : async PagingSimplifiedChapterObject {
             await* operations__.getAudiobookChapters(config, id, market, limit, offset)
         };
 
         /// Get Several Chapters 
+        ///
         /// Get Spotify catalog information for several audiobook chapters identified by their Spotify IDs. Chapters are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
         public func getSeveralChapters(ids : Text, market : Text) : async GetSeveralChapters200Response {
             await* operations__.getSeveralChapters(config, ids, market)

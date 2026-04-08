@@ -1,3 +1,4 @@
+/// Information about the track or episode.
 
 import { type EpisodeBaseReleaseDatePrecision; JSON = EpisodeBaseReleaseDatePrecision } "./EpisodeBaseReleaseDatePrecision";
 
@@ -24,7 +25,6 @@ import { type SimplifiedShowObject; JSON = SimplifiedShowObject } "./SimplifiedS
 import { type TrackObject; JSON = TrackObject } "./TrackObject";
 
 // PlaylistTrackObjectTrack.mo
-/// Information about the track or episode.
 import Runtime "mo:core/Runtime";
 
 module {

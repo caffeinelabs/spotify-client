@@ -6,7 +6,7 @@ import Blob "mo:core/Blob";
 import Array "mo:core/Array";
 import Error "mo:core/Error";
 import Base64 "mo:core/Base64";
-import { JSON } "mo:serde-core";
+import { JSON } "mo:serde";
 import { type AddTracksToPlaylistRequest; JSON = AddTracksToPlaylistRequest } "../Models/AddTracksToPlaylistRequest";
 import { type ChangePlaylistDetailsRequest; JSON = ChangePlaylistDetailsRequest } "../Models/ChangePlaylistDetailsRequest";
 import { type CreatePlaylistRequest; JSON = CreatePlaylistRequest } "../Models/CreatePlaylistRequest";
@@ -61,6 +61,7 @@ module {
 
 
     /// Add Items to Playlist 
+    ///
     /// Add one or more items to a user's playlist. 
     public func addTracksToPlaylist(config : Config, playlistId : Text, position : Int, uris : Text, addTracksToPlaylistRequest : AddTracksToPlaylistRequest) : async* ReorderOrReplacePlaylistsTracks200Response {
         let {baseUrl; cycles} = config;
@@ -212,6 +213,7 @@ module {
     };
 
     /// Change Playlist Details 
+    ///
     /// Change a playlist's name and public/private state. (The user must, of course, own the playlist.) 
     public func changePlaylistDetails(config : Config, playlistId : Text, changePlaylistDetailsRequest : ChangePlaylistDetailsRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -266,6 +268,7 @@ module {
     };
 
     /// Check if Current User Follows Playlist 
+    ///
     /// Check to see if the current user is following a specified playlist. 
     public func checkIfUserFollowsPlaylist(config : Config, playlistId : Text, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
@@ -407,6 +410,7 @@ module {
     };
 
     /// Create Playlist 
+    ///
     /// Create a playlist for a Spotify user. (The playlist will be empty until you [add tracks](/documentation/web-api/reference/add-tracks-to-playlist).) Each user is generally limited to a maximum of 11000 playlists. 
     public func createPlaylist(config : Config, userId : Text, createPlaylistRequest : CreatePlaylistRequest) : async* PlaylistObject {
         let {baseUrl; cycles} = config;
@@ -557,6 +561,7 @@ module {
     };
 
     /// Follow Playlist 
+    ///
     /// Add the current user as a follower of a playlist. 
     public func followPlaylist(config : Config, playlistId : Text, followPlaylistRequest : FollowPlaylistRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -611,6 +616,7 @@ module {
     };
 
     /// Get Category's Playlists 
+    ///
     /// Get a list of Spotify playlists tagged with a particular category. 
     public func getACategoriesPlaylists(config : Config, categoryId : Text, limit : Nat, offset : Int) : async* PagingFeaturedPlaylistObject {
         let {baseUrl; cycles} = config;
@@ -757,6 +763,7 @@ module {
     };
 
     /// Get Current User's Playlists 
+    ///
     /// Get a list of the playlists owned or followed by the current Spotify user. 
     public func getAListOfCurrentUsersPlaylists(config : Config, limit : Nat, offset : Int) : async* PagingPlaylistObject {
         let {baseUrl; cycles} = config;
@@ -902,6 +909,7 @@ module {
     };
 
     /// Get Featured Playlists 
+    ///
     /// Get a list of Spotify featured playlists (shown, for example, on a Spotify player's 'Browse' tab). 
     public func getFeaturedPlaylists(config : Config, locale : Text, limit : Nat, offset : Int) : async* PagingFeaturedPlaylistObject {
         let {baseUrl; cycles} = config;
@@ -1047,6 +1055,7 @@ module {
     };
 
     /// Get User's Playlists 
+    ///
     /// Get a list of the playlists owned or followed by a Spotify user. 
     public func getListUsersPlaylists(config : Config, userId : Text, limit : Nat, offset : Int) : async* PagingPlaylistObject {
         let {baseUrl; cycles} = config;
@@ -1193,6 +1202,7 @@ module {
     };
 
     /// Get Playlist 
+    ///
     /// Get a playlist owned by a Spotify user. 
     public func getPlaylist(config : Config, playlistId : Text, market : Text, fields : Text, additionalTypes : Text) : async* PlaylistObject {
         let {baseUrl; cycles} = config;
@@ -1339,6 +1349,7 @@ module {
     };
 
     /// Get Playlist Cover Image 
+    ///
     /// Get the current image associated with a specific playlist. 
     public func getPlaylistCover(config : Config, playlistId : Text) : async* [ImageObject] {
         let {baseUrl; cycles} = config;
@@ -1485,6 +1496,7 @@ module {
     };
 
     /// Get Playlist Items 
+    ///
     /// Get full details of the items of a playlist owned by a Spotify user. 
     public func getPlaylistsTracks(config : Config, playlistId : Text, market : Text, fields : Text, limit : Nat, offset : Int, additionalTypes : Text) : async* PagingPlaylistTrackObject {
         let {baseUrl; cycles} = config;
@@ -1631,6 +1643,7 @@ module {
     };
 
     /// Remove Playlist Items 
+    ///
     /// Remove one or more items from a user's playlist. 
     public func removeTracksPlaylist(config : Config, playlistId : Text, removeTracksPlaylistRequest : RemoveTracksPlaylistRequest) : async* ReorderOrReplacePlaylistsTracks200Response {
         let {baseUrl; cycles} = config;
@@ -1781,6 +1794,7 @@ module {
     };
 
     /// Update Playlist Items 
+    ///
     /// Either reorder or replace items in a playlist depending on the request's parameters. To reorder items, include `range_start`, `insert_before`, `range_length` and `snapshot_id` in the request's body. To replace items, include `uris` as either a query parameter or in the request's body. Replacing items in a playlist will overwrite its existing items. This operation can be used for replacing or clearing items in a playlist. <br/> **Note**: Replace and reorder are mutually exclusive operations which share the same endpoint, but have different parameters. These operations can't be applied together in a single request. 
     public func reorderOrReplacePlaylistsTracks(config : Config, playlistId : Text, uris : Text, reorderOrReplacePlaylistsTracksRequest : ReorderOrReplacePlaylistsTracksRequest) : async* ReorderOrReplacePlaylistsTracks200Response {
         let {baseUrl; cycles} = config;
@@ -1932,6 +1946,7 @@ module {
     };
 
     /// Unfollow Playlist 
+    ///
     /// Remove the current user as a follower of a playlist. 
     public func unfollowPlaylist(config : Config, playlistId : Text) : async* () {
         let {baseUrl; cycles} = config;
@@ -1981,6 +1996,7 @@ module {
     };
 
     /// Add Custom Playlist Cover Image 
+    ///
     /// Replace the image used to represent a specific playlist. 
     public func uploadCustomPlaylistCover(config : Config, playlistId : Text, body : Blob) : async* () {
         let {baseUrl; cycles} = config;
@@ -2056,96 +2072,112 @@ module {
 
     public module class PlaylistsApi(config : Config) {
         /// Add Items to Playlist 
+        ///
         /// Add one or more items to a user's playlist. 
         public func addTracksToPlaylist(playlistId : Text, position : Int, uris : Text, addTracksToPlaylistRequest : AddTracksToPlaylistRequest) : async ReorderOrReplacePlaylistsTracks200Response {
             await* operations__.addTracksToPlaylist(config, playlistId, position, uris, addTracksToPlaylistRequest)
         };
 
         /// Change Playlist Details 
+        ///
         /// Change a playlist's name and public/private state. (The user must, of course, own the playlist.) 
         public func changePlaylistDetails(playlistId : Text, changePlaylistDetailsRequest : ChangePlaylistDetailsRequest) : async () {
             await* operations__.changePlaylistDetails(config, playlistId, changePlaylistDetailsRequest)
         };
 
         /// Check if Current User Follows Playlist 
+        ///
         /// Check to see if the current user is following a specified playlist. 
         public func checkIfUserFollowsPlaylist(playlistId : Text, ids : Text) : async [Bool] {
             await* operations__.checkIfUserFollowsPlaylist(config, playlistId, ids)
         };
 
         /// Create Playlist 
+        ///
         /// Create a playlist for a Spotify user. (The playlist will be empty until you [add tracks](/documentation/web-api/reference/add-tracks-to-playlist).) Each user is generally limited to a maximum of 11000 playlists. 
         public func createPlaylist(userId : Text, createPlaylistRequest : CreatePlaylistRequest) : async PlaylistObject {
             await* operations__.createPlaylist(config, userId, createPlaylistRequest)
         };
 
         /// Follow Playlist 
+        ///
         /// Add the current user as a follower of a playlist. 
         public func followPlaylist(playlistId : Text, followPlaylistRequest : FollowPlaylistRequest) : async () {
             await* operations__.followPlaylist(config, playlistId, followPlaylistRequest)
         };
 
         /// Get Category's Playlists 
+        ///
         /// Get a list of Spotify playlists tagged with a particular category. 
         public func getACategoriesPlaylists(categoryId : Text, limit : Nat, offset : Int) : async PagingFeaturedPlaylistObject {
             await* operations__.getACategoriesPlaylists(config, categoryId, limit, offset)
         };
 
         /// Get Current User's Playlists 
+        ///
         /// Get a list of the playlists owned or followed by the current Spotify user. 
         public func getAListOfCurrentUsersPlaylists(limit : Nat, offset : Int) : async PagingPlaylistObject {
             await* operations__.getAListOfCurrentUsersPlaylists(config, limit, offset)
         };
 
         /// Get Featured Playlists 
+        ///
         /// Get a list of Spotify featured playlists (shown, for example, on a Spotify player's 'Browse' tab). 
         public func getFeaturedPlaylists(locale : Text, limit : Nat, offset : Int) : async PagingFeaturedPlaylistObject {
             await* operations__.getFeaturedPlaylists(config, locale, limit, offset)
         };
 
         /// Get User's Playlists 
+        ///
         /// Get a list of the playlists owned or followed by a Spotify user. 
         public func getListUsersPlaylists(userId : Text, limit : Nat, offset : Int) : async PagingPlaylistObject {
             await* operations__.getListUsersPlaylists(config, userId, limit, offset)
         };
 
         /// Get Playlist 
+        ///
         /// Get a playlist owned by a Spotify user. 
         public func getPlaylist(playlistId : Text, market : Text, fields : Text, additionalTypes : Text) : async PlaylistObject {
             await* operations__.getPlaylist(config, playlistId, market, fields, additionalTypes)
         };
 
         /// Get Playlist Cover Image 
+        ///
         /// Get the current image associated with a specific playlist. 
         public func getPlaylistCover(playlistId : Text) : async [ImageObject] {
             await* operations__.getPlaylistCover(config, playlistId)
         };
 
         /// Get Playlist Items 
+        ///
         /// Get full details of the items of a playlist owned by a Spotify user. 
         public func getPlaylistsTracks(playlistId : Text, market : Text, fields : Text, limit : Nat, offset : Int, additionalTypes : Text) : async PagingPlaylistTrackObject {
             await* operations__.getPlaylistsTracks(config, playlistId, market, fields, limit, offset, additionalTypes)
         };
 
         /// Remove Playlist Items 
+        ///
         /// Remove one or more items from a user's playlist. 
         public func removeTracksPlaylist(playlistId : Text, removeTracksPlaylistRequest : RemoveTracksPlaylistRequest) : async ReorderOrReplacePlaylistsTracks200Response {
             await* operations__.removeTracksPlaylist(config, playlistId, removeTracksPlaylistRequest)
         };
 
         /// Update Playlist Items 
+        ///
         /// Either reorder or replace items in a playlist depending on the request's parameters. To reorder items, include `range_start`, `insert_before`, `range_length` and `snapshot_id` in the request's body. To replace items, include `uris` as either a query parameter or in the request's body. Replacing items in a playlist will overwrite its existing items. This operation can be used for replacing or clearing items in a playlist. <br/> **Note**: Replace and reorder are mutually exclusive operations which share the same endpoint, but have different parameters. These operations can't be applied together in a single request. 
         public func reorderOrReplacePlaylistsTracks(playlistId : Text, uris : Text, reorderOrReplacePlaylistsTracksRequest : ReorderOrReplacePlaylistsTracksRequest) : async ReorderOrReplacePlaylistsTracks200Response {
             await* operations__.reorderOrReplacePlaylistsTracks(config, playlistId, uris, reorderOrReplacePlaylistsTracksRequest)
         };
 
         /// Unfollow Playlist 
+        ///
         /// Remove the current user as a follower of a playlist. 
         public func unfollowPlaylist(playlistId : Text) : async () {
             await* operations__.unfollowPlaylist(config, playlistId)
         };
 
         /// Add Custom Playlist Cover Image 
+        ///
         /// Replace the image used to represent a specific playlist. 
         public func uploadCustomPlaylistCover(playlistId : Text, body : Blob) : async () {
             await* operations__.uploadCustomPlaylistCover(config, playlistId, body)

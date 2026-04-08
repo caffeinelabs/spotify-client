@@ -6,7 +6,7 @@ import Blob "mo:core/Blob";
 import Array "mo:core/Array";
 import Error "mo:core/Error";
 import Base64 "mo:core/Base64";
-import { JSON } "mo:serde-core";
+import { JSON } "mo:serde";
 import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/GetAnAlbum401Response";
 import { type IncludeExternal; JSON = IncludeExternal } "../Models/IncludeExternal";
 import { type ItemTypeInner; JSON = ItemTypeInner } "../Models/ItemTypeInner";
@@ -52,6 +52,7 @@ module {
 
 
     /// Search for Item 
+    ///
     /// Get Spotify catalog information about albums, artists, playlists, tracks, shows, episodes or audiobooks that match a keyword string. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
     public func search(config : Config, q : Text, type_ : [ItemTypeInner], market : Text, limit : Nat, offset : Nat, includeExternal : IncludeExternal) : async* Search200Response {
         let {baseUrl; cycles} = config;
@@ -203,6 +204,7 @@ module {
 
     public module class SearchApi(config : Config) {
         /// Search for Item 
+        ///
         /// Get Spotify catalog information about albums, artists, playlists, tracks, shows, episodes or audiobooks that match a keyword string. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
         public func search(q : Text, type_ : [ItemTypeInner], market : Text, limit : Nat, offset : Nat, includeExternal : IncludeExternal) : async Search200Response {
             await* operations__.search(config, q, type_, market, limit, offset, includeExternal)

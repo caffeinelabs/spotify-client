@@ -1,6 +1,6 @@
+/// The object type. 
 
 // ShowBaseType.mo
-/// The object type. 
 /// Enum values: #show
 
 module {

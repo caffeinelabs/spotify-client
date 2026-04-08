@@ -6,7 +6,7 @@ import Blob "mo:core/Blob";
 import Array "mo:core/Array";
 import Error "mo:core/Error";
 import Base64 "mo:core/Base64";
-import { JSON } "mo:serde-core";
+import { JSON } "mo:serde";
 import { type CategoryObject; JSON = CategoryObject } "../Models/CategoryObject";
 import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/GetAnAlbum401Response";
 import { type GetCategories200Response; JSON = GetCategories200Response } "../Models/GetCategories200Response";
@@ -52,6 +52,7 @@ module {
 
 
     /// Get Category's Playlists 
+    ///
     /// Get a list of Spotify playlists tagged with a particular category. 
     public func getACategoriesPlaylists(config : Config, categoryId : Text, limit : Nat, offset : Int) : async* PagingFeaturedPlaylistObject {
         let {baseUrl; cycles} = config;
@@ -198,6 +199,7 @@ module {
     };
 
     /// Get Single Browse Category 
+    ///
     /// Get a single category used to tag items in Spotify (on, for example, the Spotify player’s “Browse” tab). 
     public func getACategory(config : Config, categoryId : Text, locale : Text) : async* CategoryObject {
         let {baseUrl; cycles} = config;
@@ -344,6 +346,7 @@ module {
     };
 
     /// Get Several Browse Categories 
+    ///
     /// Get a list of categories used to tag items in Spotify (on, for example, the Spotify player’s “Browse” tab). 
     public func getCategories(config : Config, locale : Text, limit : Nat, offset : Int) : async* GetCategories200Response {
         let {baseUrl; cycles} = config;
@@ -497,18 +500,21 @@ module {
 
     public module class CategoriesApi(config : Config) {
         /// Get Category's Playlists 
+        ///
         /// Get a list of Spotify playlists tagged with a particular category. 
         public func getACategoriesPlaylists(categoryId : Text, limit : Nat, offset : Int) : async PagingFeaturedPlaylistObject {
             await* operations__.getACategoriesPlaylists(config, categoryId, limit, offset)
         };
 
         /// Get Single Browse Category 
+        ///
         /// Get a single category used to tag items in Spotify (on, for example, the Spotify player’s “Browse” tab). 
         public func getACategory(categoryId : Text, locale : Text) : async CategoryObject {
             await* operations__.getACategory(config, categoryId, locale)
         };
 
         /// Get Several Browse Categories 
+        ///
         /// Get a list of categories used to tag items in Spotify (on, for example, the Spotify player’s “Browse” tab). 
         public func getCategories(locale : Text, limit : Nat, offset : Int) : async GetCategories200Response {
             await* operations__.getCategories(config, locale, limit, offset)

@@ -1,6 +1,6 @@
+/// The object type. 
 
 // AudioFeaturesObjectType.mo
-/// The object type. 
 /// Enum values: #audio_features
 
 module {

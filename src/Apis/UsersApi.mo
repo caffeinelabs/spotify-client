@@ -6,7 +6,7 @@ import Blob "mo:core/Blob";
 import Array "mo:core/Array";
 import Error "mo:core/Error";
 import Base64 "mo:core/Base64";
-import { JSON } "mo:serde-core";
+import { JSON } "mo:serde";
 import { type FollowArtistsUsersRequest; JSON = FollowArtistsUsersRequest } "../Models/FollowArtistsUsersRequest";
 import { type FollowPlaylistRequest; JSON = FollowPlaylistRequest } "../Models/FollowPlaylistRequest";
 import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/GetAnAlbum401Response";
@@ -61,6 +61,7 @@ module {
 
 
     /// Check If User Follows Artists or Users 
+    ///
     /// Check to see if the current user is following one or more artists or other Spotify users. 
     public func checkCurrentUserFollows(config : Config, type_ : ItemType2, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
@@ -201,6 +202,7 @@ module {
     };
 
     /// Check if Current User Follows Playlist 
+    ///
     /// Check to see if the current user is following a specified playlist. 
     public func checkIfUserFollowsPlaylist(config : Config, playlistId : Text, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
@@ -342,6 +344,7 @@ module {
     };
 
     /// Follow Artists or Users 
+    ///
     /// Add the current user as a follower of one or more artists or other Spotify users. 
     public func followArtistsUsers(config : Config, type_ : ItemType1, ids : Text, followArtistsUsersRequest : FollowArtistsUsersRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -396,6 +399,7 @@ module {
     };
 
     /// Follow Playlist 
+    ///
     /// Add the current user as a follower of a playlist. 
     public func followPlaylist(config : Config, playlistId : Text, followPlaylistRequest : FollowPlaylistRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -450,6 +454,7 @@ module {
     };
 
     /// Get Current User's Profile 
+    ///
     /// Get detailed profile information about the current user (including the current user's username). 
     public func getCurrentUsersProfile(config : Config) : async* PrivateUserObject {
         let {baseUrl; cycles} = config;
@@ -594,6 +599,7 @@ module {
     };
 
     /// Get Followed Artists 
+    ///
     /// Get the current user's followed artists. 
     public func getFollowed(config : Config, type_ : ItemType, after : Text, limit : Nat) : async* GetFollowed200Response {
         let {baseUrl; cycles} = config;
@@ -739,6 +745,7 @@ module {
     };
 
     /// Get User's Playlists 
+    ///
     /// Get a list of the playlists owned or followed by a Spotify user. 
     public func getListUsersPlaylists(config : Config, userId : Text, limit : Nat, offset : Int) : async* PagingPlaylistObject {
         let {baseUrl; cycles} = config;
@@ -885,6 +892,7 @@ module {
     };
 
     /// Get User's Profile 
+    ///
     /// Get public profile information about a Spotify user. 
     public func getUsersProfile(config : Config, userId : Text) : async* PublicUserObject {
         let {baseUrl; cycles} = config;
@@ -1030,6 +1038,7 @@ module {
     };
 
     /// Get User's Top Items 
+    ///
     /// Get the current user's top artists or tracks based on calculated affinity. 
     public func getUsersTopArtistsAndTracks(config : Config, type_ : Type_, timeRange : Text, limit : Nat, offset : Int) : async* GetUsersTopArtistsAndTracks200Response {
         let {baseUrl; cycles} = config;
@@ -1176,6 +1185,7 @@ module {
     };
 
     /// Unfollow Artists or Users 
+    ///
     /// Remove the current user as a follower of one or more artists or other Spotify users. 
     public func unfollowArtistsUsers(config : Config, type_ : ItemType2, ids : Text, unfollowArtistsUsersRequest : UnfollowArtistsUsersRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -1230,6 +1240,7 @@ module {
     };
 
     /// Unfollow Playlist 
+    ///
     /// Remove the current user as a follower of a playlist. 
     public func unfollowPlaylist(config : Config, playlistId : Text) : async* () {
         let {baseUrl; cycles} = config;
@@ -1295,66 +1306,77 @@ module {
 
     public module class UsersApi(config : Config) {
         /// Check If User Follows Artists or Users 
+        ///
         /// Check to see if the current user is following one or more artists or other Spotify users. 
         public func checkCurrentUserFollows(type_ : ItemType2, ids : Text) : async [Bool] {
             await* operations__.checkCurrentUserFollows(config, type_, ids)
         };
 
         /// Check if Current User Follows Playlist 
+        ///
         /// Check to see if the current user is following a specified playlist. 
         public func checkIfUserFollowsPlaylist(playlistId : Text, ids : Text) : async [Bool] {
             await* operations__.checkIfUserFollowsPlaylist(config, playlistId, ids)
         };
 
         /// Follow Artists or Users 
+        ///
         /// Add the current user as a follower of one or more artists or other Spotify users. 
         public func followArtistsUsers(type_ : ItemType1, ids : Text, followArtistsUsersRequest : FollowArtistsUsersRequest) : async () {
             await* operations__.followArtistsUsers(config, type_, ids, followArtistsUsersRequest)
         };
 
         /// Follow Playlist 
+        ///
         /// Add the current user as a follower of a playlist. 
         public func followPlaylist(playlistId : Text, followPlaylistRequest : FollowPlaylistRequest) : async () {
             await* operations__.followPlaylist(config, playlistId, followPlaylistRequest)
         };
 
         /// Get Current User's Profile 
+        ///
         /// Get detailed profile information about the current user (including the current user's username). 
         public func getCurrentUsersProfile() : async PrivateUserObject {
             await* operations__.getCurrentUsersProfile(config)
         };
 
         /// Get Followed Artists 
+        ///
         /// Get the current user's followed artists. 
         public func getFollowed(type_ : ItemType, after : Text, limit : Nat) : async GetFollowed200Response {
             await* operations__.getFollowed(config, type_, after, limit)
         };
 
         /// Get User's Playlists 
+        ///
         /// Get a list of the playlists owned or followed by a Spotify user. 
         public func getListUsersPlaylists(userId : Text, limit : Nat, offset : Int) : async PagingPlaylistObject {
             await* operations__.getListUsersPlaylists(config, userId, limit, offset)
         };
 
         /// Get User's Profile 
+        ///
         /// Get public profile information about a Spotify user. 
         public func getUsersProfile(userId : Text) : async PublicUserObject {
             await* operations__.getUsersProfile(config, userId)
         };
 
         /// Get User's Top Items 
+        ///
         /// Get the current user's top artists or tracks based on calculated affinity. 
         public func getUsersTopArtistsAndTracks(type_ : Type_, timeRange : Text, limit : Nat, offset : Int) : async GetUsersTopArtistsAndTracks200Response {
             await* operations__.getUsersTopArtistsAndTracks(config, type_, timeRange, limit, offset)
         };
 
         /// Unfollow Artists or Users 
+        ///
         /// Remove the current user as a follower of one or more artists or other Spotify users. 
         public func unfollowArtistsUsers(type_ : ItemType2, ids : Text, unfollowArtistsUsersRequest : UnfollowArtistsUsersRequest) : async () {
             await* operations__.unfollowArtistsUsers(config, type_, ids, unfollowArtistsUsersRequest)
         };
 
         /// Unfollow Playlist 
+        ///
         /// Remove the current user as a follower of a playlist. 
         public func unfollowPlaylist(playlistId : Text) : async () {
             await* operations__.unfollowPlaylist(config, playlistId)

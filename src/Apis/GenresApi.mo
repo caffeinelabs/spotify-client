@@ -6,7 +6,7 @@ import Blob "mo:core/Blob";
 import Array "mo:core/Array";
 import Error "mo:core/Error";
 import Base64 "mo:core/Base64";
-import { JSON } "mo:serde-core";
+import { JSON } "mo:serde";
 import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/GetAnAlbum401Response";
 import { type GetRecommendationGenres200Response; JSON = GetRecommendationGenres200Response } "../Models/GetRecommendationGenres200Response";
 import { type Config } "../Config";
@@ -50,6 +50,7 @@ module {
 
 
     /// Get Available Genre Seeds 
+    ///
     /// Retrieve a list of available genres seed parameter values for [recommendations](/documentation/web-api/reference/get-recommendations). 
     public func getRecommendationGenres(config : Config) : async* GetRecommendationGenres200Response {
         let {baseUrl; cycles} = config;
@@ -200,6 +201,7 @@ module {
 
     public module class GenresApi(config : Config) {
         /// Get Available Genre Seeds 
+        ///
         /// Retrieve a list of available genres seed parameter values for [recommendations](/documentation/web-api/reference/get-recommendations). 
         public func getRecommendationGenres() : async GetRecommendationGenres200Response {
             await* operations__.getRecommendationGenres(config)

@@ -6,7 +6,7 @@ import Blob "mo:core/Blob";
 import Array "mo:core/Array";
 import Error "mo:core/Error";
 import Base64 "mo:core/Base64";
-import { JSON } "mo:serde-core";
+import { JSON } "mo:serde";
 import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/GetAnAlbum401Response";
 import { type GetMultipleShows200Response; JSON = GetMultipleShows200Response } "../Models/GetMultipleShows200Response";
 import { type PagingSavedShowObject; JSON = PagingSavedShowObject } "../Models/PagingSavedShowObject";
@@ -53,6 +53,7 @@ module {
 
 
     /// Check User's Saved Shows 
+    ///
     /// Check if one or more shows is already saved in the current Spotify user's library. 
     public func checkUsersSavedShows(config : Config, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
@@ -193,6 +194,7 @@ module {
     };
 
     /// Get Show 
+    ///
     /// Get Spotify catalog information for a single show identified by its unique Spotify ID. 
     public func getAShow(config : Config, id : Text, market : Text) : async* ShowObject {
         let {baseUrl; cycles} = config;
@@ -339,6 +341,7 @@ module {
     };
 
     /// Get Show Episodes 
+    ///
     /// Get Spotify catalog information about an show’s episodes. Optional parameters can be used to limit the number of episodes returned. 
     public func getAShowsEpisodes(config : Config, id : Text, market : Text, limit : Nat, offset : Int) : async* PagingSimplifiedEpisodeObject {
         let {baseUrl; cycles} = config;
@@ -485,6 +488,7 @@ module {
     };
 
     /// Get Several Shows 
+    ///
     /// Get Spotify catalog information for several shows based on their Spotify IDs. 
     public func getMultipleShows(config : Config, ids : Text, market : Text) : async* GetMultipleShows200Response {
         let {baseUrl; cycles} = config;
@@ -630,6 +634,7 @@ module {
     };
 
     /// Get User's Saved Shows 
+    ///
     /// Get a list of shows saved in the current Spotify user's library. Optional parameters can be used to limit the number of shows returned. 
     public func getUsersSavedShows(config : Config, limit : Nat, offset : Int) : async* PagingSavedShowObject {
         let {baseUrl; cycles} = config;
@@ -775,6 +780,7 @@ module {
     };
 
     /// Remove User's Saved Shows 
+    ///
     /// Delete one or more shows from current Spotify user's library. 
     public func removeShowsUser(config : Config, ids : Text, market : Text) : async* () {
         let {baseUrl; cycles} = config;
@@ -824,6 +830,7 @@ module {
     };
 
     /// Save Shows for Current User 
+    ///
     /// Save one or more shows to current Spotify user's library. 
     public func saveShowsUser(config : Config, ids : Text) : async* () {
         let {baseUrl; cycles} = config;
@@ -885,42 +892,49 @@ module {
 
     public module class ShowsApi(config : Config) {
         /// Check User's Saved Shows 
+        ///
         /// Check if one or more shows is already saved in the current Spotify user's library. 
         public func checkUsersSavedShows(ids : Text) : async [Bool] {
             await* operations__.checkUsersSavedShows(config, ids)
         };
 
         /// Get Show 
+        ///
         /// Get Spotify catalog information for a single show identified by its unique Spotify ID. 
         public func getAShow(id : Text, market : Text) : async ShowObject {
             await* operations__.getAShow(config, id, market)
         };
 
         /// Get Show Episodes 
+        ///
         /// Get Spotify catalog information about an show’s episodes. Optional parameters can be used to limit the number of episodes returned. 
         public func getAShowsEpisodes(id : Text, market : Text, limit : Nat, offset : Int) : async PagingSimplifiedEpisodeObject {
             await* operations__.getAShowsEpisodes(config, id, market, limit, offset)
         };
 
         /// Get Several Shows 
+        ///
         /// Get Spotify catalog information for several shows based on their Spotify IDs. 
         public func getMultipleShows(ids : Text, market : Text) : async GetMultipleShows200Response {
             await* operations__.getMultipleShows(config, ids, market)
         };
 
         /// Get User's Saved Shows 
+        ///
         /// Get a list of shows saved in the current Spotify user's library. Optional parameters can be used to limit the number of shows returned. 
         public func getUsersSavedShows(limit : Nat, offset : Int) : async PagingSavedShowObject {
             await* operations__.getUsersSavedShows(config, limit, offset)
         };
 
         /// Remove User's Saved Shows 
+        ///
         /// Delete one or more shows from current Spotify user's library. 
         public func removeShowsUser(ids : Text, market : Text) : async () {
             await* operations__.removeShowsUser(config, ids, market)
         };
 
         /// Save Shows for Current User 
+        ///
         /// Save one or more shows to current Spotify user's library. 
         public func saveShowsUser(ids : Text) : async () {
             await* operations__.saveShowsUser(config, ids)

@@ -1,6 +1,6 @@
+/// The type of the album. 
 
 // AlbumBaseAlbumType.mo
-/// The type of the album. 
 /// Enum values: #album, #single, #compilation
 
 module {

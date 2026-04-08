@@ -1,6 +1,6 @@
+/// The object type: \"track\". 
 
 // TrackObjectType.mo
-/// The object type: \"track\". 
 /// Enum values: #track
 
 module {

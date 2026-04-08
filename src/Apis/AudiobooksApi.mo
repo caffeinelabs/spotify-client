@@ -6,7 +6,7 @@ import Blob "mo:core/Blob";
 import Array "mo:core/Array";
 import Error "mo:core/Error";
 import Base64 "mo:core/Base64";
-import { JSON } "mo:serde-core";
+import { JSON } "mo:serde";
 import { type AudiobookObject; JSON = AudiobookObject } "../Models/AudiobookObject";
 import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/GetAnAlbum401Response";
 import { type GetMultipleAudiobooks200Response; JSON = GetMultipleAudiobooks200Response } "../Models/GetMultipleAudiobooks200Response";
@@ -53,6 +53,7 @@ module {
 
 
     /// Check User's Saved Audiobooks 
+    ///
     /// Check if one or more audiobooks are already saved in the current Spotify user's library. 
     public func checkUsersSavedAudiobooks(config : Config, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
@@ -193,6 +194,7 @@ module {
     };
 
     /// Get an Audiobook 
+    ///
     /// Get Spotify catalog information for a single audiobook. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
     public func getAnAudiobook(config : Config, id : Text, market : Text) : async* AudiobookObject {
         let {baseUrl; cycles} = config;
@@ -381,6 +383,7 @@ module {
     };
 
     /// Get Audiobook Chapters 
+    ///
     /// Get Spotify catalog information about an audiobook's chapters. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
     public func getAudiobookChapters(config : Config, id : Text, market : Text, limit : Nat, offset : Int) : async* PagingSimplifiedChapterObject {
         let {baseUrl; cycles} = config;
@@ -527,6 +530,7 @@ module {
     };
 
     /// Get Several Audiobooks 
+    ///
     /// Get Spotify catalog information for several audiobooks identified by their Spotify IDs. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
     public func getMultipleAudiobooks(config : Config, ids : Text, market : Text) : async* GetMultipleAudiobooks200Response {
         let {baseUrl; cycles} = config;
@@ -672,6 +676,7 @@ module {
     };
 
     /// Get User's Saved Audiobooks 
+    ///
     /// Get a list of the audiobooks saved in the current Spotify user's 'Your Music' library. 
     public func getUsersSavedAudiobooks(config : Config, limit : Nat, offset : Int) : async* PagingSimplifiedAudiobookObject {
         let {baseUrl; cycles} = config;
@@ -817,6 +822,7 @@ module {
     };
 
     /// Remove User's Saved Audiobooks 
+    ///
     /// Remove one or more audiobooks from the Spotify user's library. 
     public func removeAudiobooksUser(config : Config, ids : Text) : async* () {
         let {baseUrl; cycles} = config;
@@ -866,6 +872,7 @@ module {
     };
 
     /// Save Audiobooks for Current User 
+    ///
     /// Save one or more audiobooks to the current Spotify user's library. 
     public func saveAudiobooksUser(config : Config, ids : Text) : async* () {
         let {baseUrl; cycles} = config;
@@ -927,42 +934,49 @@ module {
 
     public module class AudiobooksApi(config : Config) {
         /// Check User's Saved Audiobooks 
+        ///
         /// Check if one or more audiobooks are already saved in the current Spotify user's library. 
         public func checkUsersSavedAudiobooks(ids : Text) : async [Bool] {
             await* operations__.checkUsersSavedAudiobooks(config, ids)
         };
 
         /// Get an Audiobook 
+        ///
         /// Get Spotify catalog information for a single audiobook. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
         public func getAnAudiobook(id : Text, market : Text) : async AudiobookObject {
             await* operations__.getAnAudiobook(config, id, market)
         };
 
         /// Get Audiobook Chapters 
+        ///
         /// Get Spotify catalog information about an audiobook's chapters. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
         public func getAudiobookChapters(id : Text, market : Text, limit : Nat, offset : Int) : async PagingSimplifiedChapterObject {
             await* operations__.getAudiobookChapters(config, id, market, limit, offset)
         };
 
         /// Get Several Audiobooks 
+        ///
         /// Get Spotify catalog information for several audiobooks identified by their Spotify IDs. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
         public func getMultipleAudiobooks(ids : Text, market : Text) : async GetMultipleAudiobooks200Response {
             await* operations__.getMultipleAudiobooks(config, ids, market)
         };
 
         /// Get User's Saved Audiobooks 
+        ///
         /// Get a list of the audiobooks saved in the current Spotify user's 'Your Music' library. 
         public func getUsersSavedAudiobooks(limit : Nat, offset : Int) : async PagingSimplifiedAudiobookObject {
             await* operations__.getUsersSavedAudiobooks(config, limit, offset)
         };
 
         /// Remove User's Saved Audiobooks 
+        ///
         /// Remove one or more audiobooks from the Spotify user's library. 
         public func removeAudiobooksUser(ids : Text) : async () {
             await* operations__.removeAudiobooksUser(config, ids)
         };
 
         /// Save Audiobooks for Current User 
+        ///
         /// Save one or more audiobooks to the current Spotify user's library. 
         public func saveAudiobooksUser(ids : Text) : async () {
             await* operations__.saveAudiobooksUser(config, ids)

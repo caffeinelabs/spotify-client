@@ -6,7 +6,7 @@ import Blob "mo:core/Blob";
 import Array "mo:core/Array";
 import Error "mo:core/Error";
 import Base64 "mo:core/Base64";
-import { JSON } "mo:serde-core";
+import { JSON } "mo:serde";
 import { type AddTracksToPlaylistRequest; JSON = AddTracksToPlaylistRequest } "../Models/AddTracksToPlaylistRequest";
 import { type AudioAnalysisObject; JSON = AudioAnalysisObject } "../Models/AudioAnalysisObject";
 import { type AudioFeaturesObject; JSON = AudioFeaturesObject } "../Models/AudioFeaturesObject";
@@ -66,6 +66,7 @@ module {
 
 
     /// Add Items to Playlist 
+    ///
     /// Add one or more items to a user's playlist. 
     public func addTracksToPlaylist(config : Config, playlistId : Text, position : Int, uris : Text, addTracksToPlaylistRequest : AddTracksToPlaylistRequest) : async* ReorderOrReplacePlaylistsTracks200Response {
         let {baseUrl; cycles} = config;
@@ -217,6 +218,7 @@ module {
     };
 
     /// Check User's Saved Tracks 
+    ///
     /// Check if one or more tracks is already saved in the current Spotify user's 'Your Music' library. 
     public func checkUsersSavedTracks(config : Config, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
@@ -357,6 +359,7 @@ module {
     };
 
     /// Get Album Tracks 
+    ///
     /// Get Spotify catalog information about an album’s tracks. Optional parameters can be used to limit the number of tracks returned. 
     public func getAnAlbumsTracks(config : Config, id : Text, market : Text, limit : Nat, offset : Int) : async* PagingSimplifiedTrackObject {
         let {baseUrl; cycles} = config;
@@ -503,6 +506,7 @@ module {
     };
 
     /// Get Artist's Top Tracks 
+    ///
     /// Get Spotify catalog information about an artist's top tracks by country. 
     public func getAnArtistsTopTracks(config : Config, id : Text, market : Text) : async* GetAnArtistsTopTracks200Response {
         let {baseUrl; cycles} = config;
@@ -649,6 +653,7 @@ module {
     };
 
     /// Get Track's Audio Analysis 
+    ///
     /// Get a low-level audio analysis for a track in the Spotify catalog. The audio analysis describes the track’s structure and musical content, including rhythm, pitch, and timbre. 
     public func getAudioAnalysis(config : Config, id : Text) : async* AudioAnalysisObject {
         let {baseUrl; cycles} = config;
@@ -794,6 +799,7 @@ module {
     };
 
     /// Get Track's Audio Features 
+    ///
     /// Get audio feature information for a single track identified by its unique Spotify ID. 
     public func getAudioFeatures(config : Config, id : Text) : async* AudioFeaturesObject {
         let {baseUrl; cycles} = config;
@@ -939,6 +945,7 @@ module {
     };
 
     /// Get Playlist Items 
+    ///
     /// Get full details of the items of a playlist owned by a Spotify user. 
     public func getPlaylistsTracks(config : Config, playlistId : Text, market : Text, fields : Text, limit : Nat, offset : Int, additionalTypes : Text) : async* PagingPlaylistTrackObject {
         let {baseUrl; cycles} = config;
@@ -1085,6 +1092,7 @@ module {
     };
 
     /// Get Recommendations 
+    ///
     /// Recommendations are generated based on the available information for a given seed entity and matched against similar artists and tracks. If there is sufficient information about the provided seeds, a list of tracks will be returned together with pool size details.  For artists and tracks that are very new or obscure there might not be enough data to generate a list of tracks. 
     public func getRecommendations(config : Config, seedArtists : Text, seedGenres : Text, seedTracks : Text, limit : Nat, market : Text, minAcousticness : Float, maxAcousticness : Float, targetAcousticness : Float, minDanceability : Float, maxDanceability : Float, targetDanceability : Float, minDurationMs : Int, maxDurationMs : Int, targetDurationMs : Int, minEnergy : Float, maxEnergy : Float, targetEnergy : Float, minInstrumentalness : Float, maxInstrumentalness : Float, targetInstrumentalness : Float, minKey : Nat, maxKey : Nat, targetKey : Nat, minLiveness : Float, maxLiveness : Float, targetLiveness : Float, minLoudness : Float, maxLoudness : Float, targetLoudness : Float, minMode : Nat, maxMode : Nat, targetMode : Nat, minPopularity : Nat, maxPopularity : Nat, targetPopularity : Nat, minSpeechiness : Float, maxSpeechiness : Float, targetSpeechiness : Float, minTempo : Float, maxTempo : Float, targetTempo : Float, minTimeSignature : Int, maxTimeSignature : Int, targetTimeSignature : Int, minValence : Float, maxValence : Float, targetValence : Float) : async* RecommendationsObject {
         let {baseUrl; cycles} = config;
@@ -1230,6 +1238,7 @@ module {
     };
 
     /// Get Several Tracks' Audio Features 
+    ///
     /// Get audio features for multiple tracks based on their Spotify IDs. 
     public func getSeveralAudioFeatures(config : Config, ids : Text) : async* GetSeveralAudioFeatures200Response {
         let {baseUrl; cycles} = config;
@@ -1375,6 +1384,7 @@ module {
     };
 
     /// Get Several Tracks 
+    ///
     /// Get Spotify catalog information for multiple tracks based on their Spotify IDs. 
     public func getSeveralTracks(config : Config, ids : Text, market : Text) : async* GetAnArtistsTopTracks200Response {
         let {baseUrl; cycles} = config;
@@ -1520,6 +1530,7 @@ module {
     };
 
     /// Get Track 
+    ///
     /// Get Spotify catalog information for a single track identified by its unique Spotify ID. 
     public func getTrack(config : Config, id : Text, market : Text) : async* TrackObject {
         let {baseUrl; cycles} = config;
@@ -1666,6 +1677,7 @@ module {
     };
 
     /// Get User's Saved Tracks 
+    ///
     /// Get a list of the songs saved in the current Spotify user's 'Your Music' library. 
     public func getUsersSavedTracks(config : Config, market : Text, limit : Nat, offset : Int) : async* PagingSavedTrackObject {
         let {baseUrl; cycles} = config;
@@ -1811,6 +1823,7 @@ module {
     };
 
     /// Get User's Top Items 
+    ///
     /// Get the current user's top artists or tracks based on calculated affinity. 
     public func getUsersTopArtistsAndTracks(config : Config, type_ : Type_, timeRange : Text, limit : Nat, offset : Int) : async* GetUsersTopArtistsAndTracks200Response {
         let {baseUrl; cycles} = config;
@@ -1957,6 +1970,7 @@ module {
     };
 
     /// Remove Playlist Items 
+    ///
     /// Remove one or more items from a user's playlist. 
     public func removeTracksPlaylist(config : Config, playlistId : Text, removeTracksPlaylistRequest : RemoveTracksPlaylistRequest) : async* ReorderOrReplacePlaylistsTracks200Response {
         let {baseUrl; cycles} = config;
@@ -2107,6 +2121,7 @@ module {
     };
 
     /// Remove User's Saved Tracks 
+    ///
     /// Remove one or more tracks from the current user's 'Your Music' library. 
     public func removeTracksUser(config : Config, ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -2161,6 +2176,7 @@ module {
     };
 
     /// Update Playlist Items 
+    ///
     /// Either reorder or replace items in a playlist depending on the request's parameters. To reorder items, include `range_start`, `insert_before`, `range_length` and `snapshot_id` in the request's body. To replace items, include `uris` as either a query parameter or in the request's body. Replacing items in a playlist will overwrite its existing items. This operation can be used for replacing or clearing items in a playlist. <br/> **Note**: Replace and reorder are mutually exclusive operations which share the same endpoint, but have different parameters. These operations can't be applied together in a single request. 
     public func reorderOrReplacePlaylistsTracks(config : Config, playlistId : Text, uris : Text, reorderOrReplacePlaylistsTracksRequest : ReorderOrReplacePlaylistsTracksRequest) : async* ReorderOrReplacePlaylistsTracks200Response {
         let {baseUrl; cycles} = config;
@@ -2312,6 +2328,7 @@ module {
     };
 
     /// Save Tracks for Current User 
+    ///
     /// Save one or more tracks to the current user's 'Your Music' library. 
     public func saveTracksUser(config : Config, saveTracksUserRequest : SaveTracksUserRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -2387,102 +2404,119 @@ module {
 
     public module class TracksApi(config : Config) {
         /// Add Items to Playlist 
+        ///
         /// Add one or more items to a user's playlist. 
         public func addTracksToPlaylist(playlistId : Text, position : Int, uris : Text, addTracksToPlaylistRequest : AddTracksToPlaylistRequest) : async ReorderOrReplacePlaylistsTracks200Response {
             await* operations__.addTracksToPlaylist(config, playlistId, position, uris, addTracksToPlaylistRequest)
         };
 
         /// Check User's Saved Tracks 
+        ///
         /// Check if one or more tracks is already saved in the current Spotify user's 'Your Music' library. 
         public func checkUsersSavedTracks(ids : Text) : async [Bool] {
             await* operations__.checkUsersSavedTracks(config, ids)
         };
 
         /// Get Album Tracks 
+        ///
         /// Get Spotify catalog information about an album’s tracks. Optional parameters can be used to limit the number of tracks returned. 
         public func getAnAlbumsTracks(id : Text, market : Text, limit : Nat, offset : Int) : async PagingSimplifiedTrackObject {
             await* operations__.getAnAlbumsTracks(config, id, market, limit, offset)
         };
 
         /// Get Artist's Top Tracks 
+        ///
         /// Get Spotify catalog information about an artist's top tracks by country. 
         public func getAnArtistsTopTracks(id : Text, market : Text) : async GetAnArtistsTopTracks200Response {
             await* operations__.getAnArtistsTopTracks(config, id, market)
         };
 
         /// Get Track's Audio Analysis 
+        ///
         /// Get a low-level audio analysis for a track in the Spotify catalog. The audio analysis describes the track’s structure and musical content, including rhythm, pitch, and timbre. 
         public func getAudioAnalysis(id : Text) : async AudioAnalysisObject {
             await* operations__.getAudioAnalysis(config, id)
         };
 
         /// Get Track's Audio Features 
+        ///
         /// Get audio feature information for a single track identified by its unique Spotify ID. 
         public func getAudioFeatures(id : Text) : async AudioFeaturesObject {
             await* operations__.getAudioFeatures(config, id)
         };
 
         /// Get Playlist Items 
+        ///
         /// Get full details of the items of a playlist owned by a Spotify user. 
         public func getPlaylistsTracks(playlistId : Text, market : Text, fields : Text, limit : Nat, offset : Int, additionalTypes : Text) : async PagingPlaylistTrackObject {
             await* operations__.getPlaylistsTracks(config, playlistId, market, fields, limit, offset, additionalTypes)
         };
 
         /// Get Recommendations 
+        ///
         /// Recommendations are generated based on the available information for a given seed entity and matched against similar artists and tracks. If there is sufficient information about the provided seeds, a list of tracks will be returned together with pool size details.  For artists and tracks that are very new or obscure there might not be enough data to generate a list of tracks. 
         public func getRecommendations(seedArtists : Text, seedGenres : Text, seedTracks : Text, limit : Nat, market : Text, minAcousticness : Float, maxAcousticness : Float, targetAcousticness : Float, minDanceability : Float, maxDanceability : Float, targetDanceability : Float, minDurationMs : Int, maxDurationMs : Int, targetDurationMs : Int, minEnergy : Float, maxEnergy : Float, targetEnergy : Float, minInstrumentalness : Float, maxInstrumentalness : Float, targetInstrumentalness : Float, minKey : Nat, maxKey : Nat, targetKey : Nat, minLiveness : Float, maxLiveness : Float, targetLiveness : Float, minLoudness : Float, maxLoudness : Float, targetLoudness : Float, minMode : Nat, maxMode : Nat, targetMode : Nat, minPopularity : Nat, maxPopularity : Nat, targetPopularity : Nat, minSpeechiness : Float, maxSpeechiness : Float, targetSpeechiness : Float, minTempo : Float, maxTempo : Float, targetTempo : Float, minTimeSignature : Int, maxTimeSignature : Int, targetTimeSignature : Int, minValence : Float, maxValence : Float, targetValence : Float) : async RecommendationsObject {
             await* operations__.getRecommendations(config, seedArtists, seedGenres, seedTracks, limit, market, minAcousticness, maxAcousticness, targetAcousticness, minDanceability, maxDanceability, targetDanceability, minDurationMs, maxDurationMs, targetDurationMs, minEnergy, maxEnergy, targetEnergy, minInstrumentalness, maxInstrumentalness, targetInstrumentalness, minKey, maxKey, targetKey, minLiveness, maxLiveness, targetLiveness, minLoudness, maxLoudness, targetLoudness, minMode, maxMode, targetMode, minPopularity, maxPopularity, targetPopularity, minSpeechiness, maxSpeechiness, targetSpeechiness, minTempo, maxTempo, targetTempo, minTimeSignature, maxTimeSignature, targetTimeSignature, minValence, maxValence, targetValence)
         };
 
         /// Get Several Tracks' Audio Features 
+        ///
         /// Get audio features for multiple tracks based on their Spotify IDs. 
         public func getSeveralAudioFeatures(ids : Text) : async GetSeveralAudioFeatures200Response {
             await* operations__.getSeveralAudioFeatures(config, ids)
         };
 
         /// Get Several Tracks 
+        ///
         /// Get Spotify catalog information for multiple tracks based on their Spotify IDs. 
         public func getSeveralTracks(ids : Text, market : Text) : async GetAnArtistsTopTracks200Response {
             await* operations__.getSeveralTracks(config, ids, market)
         };
 
         /// Get Track 
+        ///
         /// Get Spotify catalog information for a single track identified by its unique Spotify ID. 
         public func getTrack(id : Text, market : Text) : async TrackObject {
             await* operations__.getTrack(config, id, market)
         };
 
         /// Get User's Saved Tracks 
+        ///
         /// Get a list of the songs saved in the current Spotify user's 'Your Music' library. 
         public func getUsersSavedTracks(market : Text, limit : Nat, offset : Int) : async PagingSavedTrackObject {
             await* operations__.getUsersSavedTracks(config, market, limit, offset)
         };
 
         /// Get User's Top Items 
+        ///
         /// Get the current user's top artists or tracks based on calculated affinity. 
         public func getUsersTopArtistsAndTracks(type_ : Type_, timeRange : Text, limit : Nat, offset : Int) : async GetUsersTopArtistsAndTracks200Response {
             await* operations__.getUsersTopArtistsAndTracks(config, type_, timeRange, limit, offset)
         };
 
         /// Remove Playlist Items 
+        ///
         /// Remove one or more items from a user's playlist. 
         public func removeTracksPlaylist(playlistId : Text, removeTracksPlaylistRequest : RemoveTracksPlaylistRequest) : async ReorderOrReplacePlaylistsTracks200Response {
             await* operations__.removeTracksPlaylist(config, playlistId, removeTracksPlaylistRequest)
         };
 
         /// Remove User's Saved Tracks 
+        ///
         /// Remove one or more tracks from the current user's 'Your Music' library. 
         public func removeTracksUser(ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async () {
             await* operations__.removeTracksUser(config, ids, saveAlbumsUserRequest)
         };
 
         /// Update Playlist Items 
+        ///
         /// Either reorder or replace items in a playlist depending on the request's parameters. To reorder items, include `range_start`, `insert_before`, `range_length` and `snapshot_id` in the request's body. To replace items, include `uris` as either a query parameter or in the request's body. Replacing items in a playlist will overwrite its existing items. This operation can be used for replacing or clearing items in a playlist. <br/> **Note**: Replace and reorder are mutually exclusive operations which share the same endpoint, but have different parameters. These operations can't be applied together in a single request. 
         public func reorderOrReplacePlaylistsTracks(playlistId : Text, uris : Text, reorderOrReplacePlaylistsTracksRequest : ReorderOrReplacePlaylistsTracksRequest) : async ReorderOrReplacePlaylistsTracks200Response {
             await* operations__.reorderOrReplacePlaylistsTracks(config, playlistId, uris, reorderOrReplacePlaylistsTracksRequest)
         };
 
         /// Save Tracks for Current User 
+        ///
         /// Save one or more tracks to the current user's 'Your Music' library. 
         public func saveTracksUser(saveTracksUserRequest : SaveTracksUserRequest) : async () {
             await* operations__.saveTracksUser(config, saveTracksUserRequest)

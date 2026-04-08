@@ -6,7 +6,7 @@ import Blob "mo:core/Blob";
 import Array "mo:core/Array";
 import Error "mo:core/Error";
 import Base64 "mo:core/Base64";
-import { JSON } "mo:serde-core";
+import { JSON } "mo:serde";
 import { type AlbumObject; JSON = AlbumObject } "../Models/AlbumObject";
 import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/GetAnAlbum401Response";
 import { type GetMultipleAlbums200Response; JSON = GetMultipleAlbums200Response } "../Models/GetMultipleAlbums200Response";
@@ -56,6 +56,7 @@ module {
 
 
     /// Check User's Saved Albums 
+    ///
     /// Check if one or more albums is already saved in the current Spotify user's 'Your Music' library. 
     public func checkUsersSavedAlbums(config : Config, ids : Text) : async* [Bool] {
         let {baseUrl; cycles} = config;
@@ -196,6 +197,7 @@ module {
     };
 
     /// Get Album 
+    ///
     /// Get Spotify catalog information for a single album. 
     public func getAnAlbum(config : Config, id : Text, market : Text) : async* AlbumObject {
         let {baseUrl; cycles} = config;
@@ -342,6 +344,7 @@ module {
     };
 
     /// Get Album Tracks 
+    ///
     /// Get Spotify catalog information about an album’s tracks. Optional parameters can be used to limit the number of tracks returned. 
     public func getAnAlbumsTracks(config : Config, id : Text, market : Text, limit : Nat, offset : Int) : async* PagingSimplifiedTrackObject {
         let {baseUrl; cycles} = config;
@@ -488,6 +491,7 @@ module {
     };
 
     /// Get Artist's Albums 
+    ///
     /// Get Spotify catalog information about an artist's albums. 
     public func getAnArtistsAlbums(config : Config, id : Text, includeGroups : Text, market : Text, limit : Nat, offset : Int) : async* PagingArtistDiscographyAlbumObject {
         let {baseUrl; cycles} = config;
@@ -634,6 +638,7 @@ module {
     };
 
     /// Get Several Albums 
+    ///
     /// Get Spotify catalog information for multiple albums identified by their Spotify IDs. 
     public func getMultipleAlbums(config : Config, ids : Text, market : Text) : async* GetMultipleAlbums200Response {
         let {baseUrl; cycles} = config;
@@ -779,6 +784,7 @@ module {
     };
 
     /// Get New Releases 
+    ///
     /// Get a list of new album releases featured in Spotify (shown, for example, on a Spotify player’s “Browse” tab). 
     public func getNewReleases(config : Config, limit : Nat, offset : Int) : async* GetNewReleases200Response {
         let {baseUrl; cycles} = config;
@@ -924,6 +930,7 @@ module {
     };
 
     /// Get User's Saved Albums 
+    ///
     /// Get a list of the albums saved in the current Spotify user's 'Your Music' library. 
     public func getUsersSavedAlbums(config : Config, limit : Nat, offset : Int, market : Text) : async* PagingSavedAlbumObject {
         let {baseUrl; cycles} = config;
@@ -1069,6 +1076,7 @@ module {
     };
 
     /// Remove Users' Saved Albums 
+    ///
     /// Remove one or more albums from the current user's 'Your Music' library. 
     public func removeAlbumsUser(config : Config, ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -1123,6 +1131,7 @@ module {
     };
 
     /// Save Albums for Current User 
+    ///
     /// Save one or more albums to the current user's 'Your Music' library. 
     public func saveAlbumsUser(config : Config, ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async* () {
         let {baseUrl; cycles} = config;
@@ -1191,54 +1200,63 @@ module {
 
     public module class AlbumsApi(config : Config) {
         /// Check User's Saved Albums 
+        ///
         /// Check if one or more albums is already saved in the current Spotify user's 'Your Music' library. 
         public func checkUsersSavedAlbums(ids : Text) : async [Bool] {
             await* operations__.checkUsersSavedAlbums(config, ids)
         };
 
         /// Get Album 
+        ///
         /// Get Spotify catalog information for a single album. 
         public func getAnAlbum(id : Text, market : Text) : async AlbumObject {
             await* operations__.getAnAlbum(config, id, market)
         };
 
         /// Get Album Tracks 
+        ///
         /// Get Spotify catalog information about an album’s tracks. Optional parameters can be used to limit the number of tracks returned. 
         public func getAnAlbumsTracks(id : Text, market : Text, limit : Nat, offset : Int) : async PagingSimplifiedTrackObject {
             await* operations__.getAnAlbumsTracks(config, id, market, limit, offset)
         };
 
         /// Get Artist's Albums 
+        ///
         /// Get Spotify catalog information about an artist's albums. 
         public func getAnArtistsAlbums(id : Text, includeGroups : Text, market : Text, limit : Nat, offset : Int) : async PagingArtistDiscographyAlbumObject {
             await* operations__.getAnArtistsAlbums(config, id, includeGroups, market, limit, offset)
         };
 
         /// Get Several Albums 
+        ///
         /// Get Spotify catalog information for multiple albums identified by their Spotify IDs. 
         public func getMultipleAlbums(ids : Text, market : Text) : async GetMultipleAlbums200Response {
             await* operations__.getMultipleAlbums(config, ids, market)
         };
 
         /// Get New Releases 
+        ///
         /// Get a list of new album releases featured in Spotify (shown, for example, on a Spotify player’s “Browse” tab). 
         public func getNewReleases(limit : Nat, offset : Int) : async GetNewReleases200Response {
             await* operations__.getNewReleases(config, limit, offset)
         };
 
         /// Get User's Saved Albums 
+        ///
         /// Get a list of the albums saved in the current Spotify user's 'Your Music' library. 
         public func getUsersSavedAlbums(limit : Nat, offset : Int, market : Text) : async PagingSavedAlbumObject {
             await* operations__.getUsersSavedAlbums(config, limit, offset, market)
         };
 
         /// Remove Users' Saved Albums 
+        ///
         /// Remove one or more albums from the current user's 'Your Music' library. 
         public func removeAlbumsUser(ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async () {
             await* operations__.removeAlbumsUser(config, ids, saveAlbumsUserRequest)
         };
 
         /// Save Albums for Current User 
+        ///
         /// Save one or more albums to the current user's 'Your Music' library. 
         public func saveAlbumsUser(ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async () {
             await* operations__.saveAlbumsUser(config, ids, saveAlbumsUserRequest)

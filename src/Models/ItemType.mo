@@ -1,6 +1,6 @@
+/// The ID type: currently only `artist` is supported. 
 
 // ItemType.mo
-/// The ID type: currently only `artist` is supported. 
 /// Enum values: #artist
 
 module {
