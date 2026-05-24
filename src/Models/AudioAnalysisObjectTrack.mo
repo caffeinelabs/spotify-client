@@ -1,158 +1,324 @@
-
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
+import Runtime "mo:core/Runtime";
 import Int "mo:core/Int";
 
 // AudioAnalysisObjectTrack.mo
 
 module {
-    // User-facing type: what application code uses
-    public type AudioAnalysisObjectTrack = {
-        /// The exact number of audio samples analyzed from this track. See also `analysis_sample_rate`.
+    /// The required-fields slice of AudioAnalysisObjectTrack — what `init` consumes.
+    /// Exposed so callers can write `let req : Required = {...}` if they want
+    /// to manipulate the required-only payload independently of the full record.
+    public type Required = {
+    };
+
+    // Optional-fields slice. Private — not part of the consumer surface;
+    // it's an internal scaffold so we can express AudioAnalysisObjectTrack as an
+    // `and`-intersection and keep `init` from listing every optional explicitly.
+    type Optional = {
         num_samples : ?Int;
-        /// Length of the track in seconds.
         duration : ?Float;
-        /// This field will always contain the empty string.
         sample_md5 : ?Text;
-        /// An offset to the start of the region of the track that was analyzed. (As the entire track is analyzed, this should always be 0.)
         offset_seconds : ?Int;
-        /// The length of the region of the track was analyzed, if a subset of the track was analyzed. (As the entire track is analyzed, this should always be 0.)
         window_seconds : ?Int;
-        /// The sample rate used to decode and analyze this track. May differ from the actual sample rate of this track available on Spotify.
         analysis_sample_rate : ?Int;
-        /// The number of channels used for analysis. If 1, all channels are summed together to mono before analysis.
         analysis_channels : ?Int;
-        /// The time, in seconds, at which the track's fade-in period ends. If the track has no fade-in, this will be 0.0.
         end_of_fade_in : ?Float;
-        /// The time, in seconds, at which the track's fade-out period starts. If the track has no fade-out, this should match the track's length.
         start_of_fade_out : ?Float;
-        /// The overall loudness of a track in decibels (dB). Loudness values are averaged across the entire track and are useful for comparing relative loudness of tracks. Loudness is the quality of a sound that is the primary psychological correlate of physical strength (amplitude). Values typically range between -60 and 0 db. 
         loudness : ?Float;
-        /// The overall estimated tempo of a track in beats per minute (BPM). In musical terminology, tempo is the speed or pace of a given piece and derives directly from the average beat duration. 
         tempo : ?Float;
-        /// The confidence, from 0.0 to 1.0, of the reliability of the `tempo`.
         tempo_confidence : ?Float;
-        /// An estimated time signature. The time signature (meter) is a notational convention to specify how many beats are in each bar (or measure). The time signature ranges from 3 to 7 indicating time signatures of \"3/4\", to \"7/4\".
         time_signature : ?Nat;
-        /// The confidence, from 0.0 to 1.0, of the reliability of the `time_signature`.
         time_signature_confidence : ?Float;
-        /// The key the track is in. Integers map to pitches using standard [Pitch Class notation](https://en.wikipedia.org/wiki/Pitch_class). E.g. 0 = C, 1 = C♯/D♭, 2 = D, and so on. If no key was detected, the value is -1. 
         key : ?Int;
-        /// The confidence, from 0.0 to 1.0, of the reliability of the `key`.
         key_confidence : ?Float;
-        /// Mode indicates the modality (major or minor) of a track, the type of scale from which its melodic content is derived. Major is represented by 1 and minor is 0. 
         mode : ?Int;
-        /// The confidence, from 0.0 to 1.0, of the reliability of the `mode`.
         mode_confidence : ?Float;
-        /// An [Echo Nest Musical Fingerprint (ENMFP)](https://academiccommons.columbia.edu/doi/10.7916/D8Q248M4) codestring for this track.
         codestring : ?Text;
-        /// A version number for the Echo Nest Musical Fingerprint format used in the codestring field.
         code_version : ?Float;
-        /// An [EchoPrint](https://github.com/spotify/echoprint-codegen) codestring for this track.
         echoprintstring : ?Text;
-        /// A version number for the EchoPrint format used in the echoprintstring field.
         echoprint_version : ?Float;
-        /// A [Synchstring](https://github.com/echonest/synchdata) for this track.
         synchstring : ?Text;
-        /// A version number for the Synchstring used in the synchstring field.
         synch_version : ?Float;
-        /// A Rhythmstring for this track. The format of this string is similar to the Synchstring.
         rhythmstring : ?Text;
-        /// A version number for the Rhythmstring used in the rhythmstring field.
         rhythm_version : ?Float;
     };
 
-    // JSON sub-module: everything needed for JSON serialization
+    public type AudioAnalysisObjectTrack = Required and Optional;
+
     public module JSON {
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer AudioAnalysisObjectTrack type
-        public type JSON = {
-            num_samples : ?Int;
-            duration : ?Float;
-            sample_md5 : ?Text;
-            offset_seconds : ?Int;
-            window_seconds : ?Int;
-            analysis_sample_rate : ?Int;
-            analysis_channels : ?Int;
-            end_of_fade_in : ?Float;
-            start_of_fade_out : ?Float;
-            loudness : ?Float;
-            tempo : ?Float;
-            tempo_confidence : ?Float;
-            time_signature : ?Int;
-            time_signature_confidence : ?Float;
-            key : ?Int;
-            key_confidence : ?Float;
-            mode : ?Int;
-            mode_confidence : ?Float;
-            codestring : ?Text;
-            code_version : ?Float;
-            echoprintstring : ?Text;
-            echoprint_version : ?Float;
-            synchstring : ?Text;
-            synch_version : ?Float;
-            rhythmstring : ?Text;
-            rhythm_version : ?Float;
+        // `init` constructs a AudioAnalysisObjectTrack from just its required fields,
+        // defaulting all optional fields to `null`. Pair with record-update
+        // syntax to layer in selected optionals:
+        //   let req = { AudioAnalysisObjectTrack.init { …required fields… } with someOpt = ?… };
+        // Implementation uses Candid round-trip — Candid record subtyping fills
+        // absent optional fields with null. Costs a few cycles per call (init is
+        // not on a hot path) but keeps generated code compact regardless of how
+        // many optional fields the model has.
+        public func init(required : Required) : AudioAnalysisObjectTrack {
+            let ?res = from_candid(to_candid(required)) : ?AudioAnalysisObjectTrack else Runtime.unreachable();
+            res
         };
 
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : AudioAnalysisObjectTrack) : JSON = {
-            num_samples = value.num_samples;
-            duration = value.duration;
-            sample_md5 = value.sample_md5;
-            offset_seconds = value.offset_seconds;
-            window_seconds = value.window_seconds;
-            analysis_sample_rate = value.analysis_sample_rate;
-            analysis_channels = value.analysis_channels;
-            end_of_fade_in = value.end_of_fade_in;
-            start_of_fade_out = value.start_of_fade_out;
-            loudness = value.loudness;
-            tempo = value.tempo;
-            tempo_confidence = value.tempo_confidence;
-            time_signature = value.time_signature;
-            time_signature_confidence = value.time_signature_confidence;
-            key = value.key;
-            key_confidence = value.key_confidence;
-            mode = value.mode;
-            mode_confidence = value.mode_confidence;
-            codestring = value.codestring;
-            code_version = value.code_version;
-            echoprintstring = value.echoprintstring;
-            echoprint_version = value.echoprint_version;
-            synchstring = value.synchstring;
-            synch_version = value.synch_version;
-            rhythmstring = value.rhythmstring;
-            rhythm_version = value.rhythm_version;
+        public func toCandidValue(value : AudioAnalysisObjectTrack) : Candid.Candid {
+            let buf = List.empty<(Text, Candid.Candid)>();
+            switch (value.num_samples) {
+                case (?v__) List.add(buf, ("num_samples", #Int(v__)));
+                case null ();
+            };
+            switch (value.duration) {
+                case (?v__) List.add(buf, ("duration", #Float(v__)));
+                case null ();
+            };
+            switch (value.sample_md5) {
+                case (?v__) List.add(buf, ("sample_md5", #Text(v__)));
+                case null ();
+            };
+            switch (value.offset_seconds) {
+                case (?v__) List.add(buf, ("offset_seconds", #Int(v__)));
+                case null ();
+            };
+            switch (value.window_seconds) {
+                case (?v__) List.add(buf, ("window_seconds", #Int(v__)));
+                case null ();
+            };
+            switch (value.analysis_sample_rate) {
+                case (?v__) List.add(buf, ("analysis_sample_rate", #Int(v__)));
+                case null ();
+            };
+            switch (value.analysis_channels) {
+                case (?v__) List.add(buf, ("analysis_channels", #Int(v__)));
+                case null ();
+            };
+            switch (value.end_of_fade_in) {
+                case (?v__) List.add(buf, ("end_of_fade_in", #Float(v__)));
+                case null ();
+            };
+            switch (value.start_of_fade_out) {
+                case (?v__) List.add(buf, ("start_of_fade_out", #Float(v__)));
+                case null ();
+            };
+            switch (value.loudness) {
+                case (?v__) List.add(buf, ("loudness", #Float(v__)));
+                case null ();
+            };
+            switch (value.tempo) {
+                case (?v__) List.add(buf, ("tempo", #Float(v__)));
+                case null ();
+            };
+            switch (value.tempo_confidence) {
+                case (?v__) List.add(buf, ("tempo_confidence", #Float(v__)));
+                case null ();
+            };
+            switch (value.time_signature) {
+                case (?v__) List.add(buf, ("time_signature", #Nat(v__)));
+                case null ();
+            };
+            switch (value.time_signature_confidence) {
+                case (?v__) List.add(buf, ("time_signature_confidence", #Float(v__)));
+                case null ();
+            };
+            switch (value.key) {
+                case (?v__) List.add(buf, ("key", #Int(v__)));
+                case null ();
+            };
+            switch (value.key_confidence) {
+                case (?v__) List.add(buf, ("key_confidence", #Float(v__)));
+                case null ();
+            };
+            switch (value.mode) {
+                case (?v__) List.add(buf, ("mode", #Int(v__)));
+                case null ();
+            };
+            switch (value.mode_confidence) {
+                case (?v__) List.add(buf, ("mode_confidence", #Float(v__)));
+                case null ();
+            };
+            switch (value.codestring) {
+                case (?v__) List.add(buf, ("codestring", #Text(v__)));
+                case null ();
+            };
+            switch (value.code_version) {
+                case (?v__) List.add(buf, ("code_version", #Float(v__)));
+                case null ();
+            };
+            switch (value.echoprintstring) {
+                case (?v__) List.add(buf, ("echoprintstring", #Text(v__)));
+                case null ();
+            };
+            switch (value.echoprint_version) {
+                case (?v__) List.add(buf, ("echoprint_version", #Float(v__)));
+                case null ();
+            };
+            switch (value.synchstring) {
+                case (?v__) List.add(buf, ("synchstring", #Text(v__)));
+                case null ();
+            };
+            switch (value.synch_version) {
+                case (?v__) List.add(buf, ("synch_version", #Float(v__)));
+                case null ();
+            };
+            switch (value.rhythmstring) {
+                case (?v__) List.add(buf, ("rhythmstring", #Text(v__)));
+                case null ();
+            };
+            switch (value.rhythm_version) {
+                case (?v__) List.add(buf, ("rhythm_version", #Float(v__)));
+                case null ();
+            };
+            #Record(List.toArray(buf));
         };
 
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?AudioAnalysisObjectTrack {
-            ?{
-                num_samples = json.num_samples;
-                duration = json.duration;
-                sample_md5 = json.sample_md5;
-                offset_seconds = json.offset_seconds;
-                window_seconds = json.window_seconds;
-                analysis_sample_rate = json.analysis_sample_rate;
-                analysis_channels = json.analysis_channels;
-                end_of_fade_in = json.end_of_fade_in;
-                start_of_fade_out = json.start_of_fade_out;
-                loudness = json.loudness;
-                tempo = json.tempo;
-                tempo_confidence = json.tempo_confidence;
-                time_signature = do ? { let v = json.time_signature!; if (v < 0) return null else Int.abs(v) };
-                time_signature_confidence = json.time_signature_confidence;
-                key = json.key;
-                key_confidence = json.key_confidence;
-                mode = json.mode;
-                mode_confidence = json.mode_confidence;
-                codestring = json.codestring;
-                code_version = json.code_version;
-                echoprintstring = json.echoprintstring;
-                echoprint_version = json.echoprint_version;
-                synchstring = json.synchstring;
-                synch_version = json.synch_version;
-                rhythmstring = json.rhythmstring;
-                rhythm_version = json.rhythm_version;
-            }
-        };
-    }
-}
+        public func fromCandidValue(candid : Candid.Candid) : ?AudioAnalysisObjectTrack =
+            switch (candid) {
+                case (#Record(fields)) {
+                    let num_samples : ?Int = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "num_samples")) {
+                        case (?num_samples_field) ((switch (num_samples_field.1) { case (#Int(i)) ?i; case (#Nat(n)) ?n; case _ null }));
+                        case null null;
+                    };
+                    let duration : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "duration")) {
+                        case (?duration_field) ((switch (duration_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let sample_md5 : ?Text = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "sample_md5")) {
+                        case (?sample_md5_field) ((switch (sample_md5_field.1) { case (#Text(s)) ?s; case _ null }));
+                        case null null;
+                    };
+                    let offset_seconds : ?Int = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "offset_seconds")) {
+                        case (?offset_seconds_field) ((switch (offset_seconds_field.1) { case (#Int(i)) ?i; case (#Nat(n)) ?n; case _ null }));
+                        case null null;
+                    };
+                    let window_seconds : ?Int = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "window_seconds")) {
+                        case (?window_seconds_field) ((switch (window_seconds_field.1) { case (#Int(i)) ?i; case (#Nat(n)) ?n; case _ null }));
+                        case null null;
+                    };
+                    let analysis_sample_rate : ?Int = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "analysis_sample_rate")) {
+                        case (?analysis_sample_rate_field) ((switch (analysis_sample_rate_field.1) { case (#Int(i)) ?i; case (#Nat(n)) ?n; case _ null }));
+                        case null null;
+                    };
+                    let analysis_channels : ?Int = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "analysis_channels")) {
+                        case (?analysis_channels_field) ((switch (analysis_channels_field.1) { case (#Int(i)) ?i; case (#Nat(n)) ?n; case _ null }));
+                        case null null;
+                    };
+                    let end_of_fade_in : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "end_of_fade_in")) {
+                        case (?end_of_fade_in_field) ((switch (end_of_fade_in_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let start_of_fade_out : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "start_of_fade_out")) {
+                        case (?start_of_fade_out_field) ((switch (start_of_fade_out_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let loudness : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "loudness")) {
+                        case (?loudness_field) ((switch (loudness_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let tempo : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "tempo")) {
+                        case (?tempo_field) ((switch (tempo_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let tempo_confidence : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "tempo_confidence")) {
+                        case (?tempo_confidence_field) ((switch (tempo_confidence_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let time_signature : ?Nat = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "time_signature")) {
+                        case (?time_signature_field) ((switch (time_signature_field.1) { case (#Nat(n)) ?n; case (#Int(i)) (if (i < 0) null else ?Int.abs(i)); case _ null }));
+                        case null null;
+                    };
+                    let time_signature_confidence : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "time_signature_confidence")) {
+                        case (?time_signature_confidence_field) ((switch (time_signature_confidence_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let key : ?Int = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "key")) {
+                        case (?key_field) ((switch (key_field.1) { case (#Int(i)) ?i; case (#Nat(n)) ?n; case _ null }));
+                        case null null;
+                    };
+                    let key_confidence : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "key_confidence")) {
+                        case (?key_confidence_field) ((switch (key_confidence_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let mode : ?Int = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "mode")) {
+                        case (?mode_field) ((switch (mode_field.1) { case (#Int(i)) ?i; case (#Nat(n)) ?n; case _ null }));
+                        case null null;
+                    };
+                    let mode_confidence : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "mode_confidence")) {
+                        case (?mode_confidence_field) ((switch (mode_confidence_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let codestring : ?Text = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "codestring")) {
+                        case (?codestring_field) ((switch (codestring_field.1) { case (#Text(s)) ?s; case _ null }));
+                        case null null;
+                    };
+                    let code_version : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "code_version")) {
+                        case (?code_version_field) ((switch (code_version_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let echoprintstring : ?Text = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "echoprintstring")) {
+                        case (?echoprintstring_field) ((switch (echoprintstring_field.1) { case (#Text(s)) ?s; case _ null }));
+                        case null null;
+                    };
+                    let echoprint_version : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "echoprint_version")) {
+                        case (?echoprint_version_field) ((switch (echoprint_version_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let synchstring : ?Text = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "synchstring")) {
+                        case (?synchstring_field) ((switch (synchstring_field.1) { case (#Text(s)) ?s; case _ null }));
+                        case null null;
+                    };
+                    let synch_version : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "synch_version")) {
+                        case (?synch_version_field) ((switch (synch_version_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let rhythmstring : ?Text = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "rhythmstring")) {
+                        case (?rhythmstring_field) ((switch (rhythmstring_field.1) { case (#Text(s)) ?s; case _ null }));
+                        case null null;
+                    };
+                    let rhythm_version : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "rhythm_version")) {
+                        case (?rhythm_version_field) ((switch (rhythm_version_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    ?{
+                        num_samples;
+                        duration;
+                        sample_md5;
+                        offset_seconds;
+                        window_seconds;
+                        analysis_sample_rate;
+                        analysis_channels;
+                        end_of_fade_in;
+                        start_of_fade_out;
+                        loudness;
+                        tempo;
+                        tempo_confidence;
+                        time_signature;
+                        time_signature_confidence;
+                        key;
+                        key_confidence;
+                        mode;
+                        mode_confidence;
+                        codestring;
+                        code_version;
+                        echoprintstring;
+                        echoprint_version;
+                        synchstring;
+                        synch_version;
+                        rhythmstring;
+                        rhythm_version;
+                    };
+                };
+                case _ null;
+            };
+    };
+
+    /// Re-export of `JSON.init` at the outer module level. Three import shapes
+    /// all reach the same function:
+    ///
+    ///   - `import T "...";                                     T.init {…}`     // whole-module
+    ///   - `import { type T; JSON = T } "...";                  T.init {…}`     // JSON-alias
+    ///   - `import { type T; JSON = T; init = myInit } "...";   myInit {…}`     // explicit rename
+    ///
+    /// The third form is handy when several models would all be reachable
+    /// as `T.init` and you want each bound to a distinct local name.
+    public let init = JSON.init;
+};

@@ -1,31 +1,33 @@
 /// The object type. 
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
+import Runtime "mo:core/Runtime";
 
 // PublicUserObjectType.mo
 /// Enum values: #user
 
 module {
-    // User-facing type: type-safe variants for application code
     public type PublicUserObjectType = {
         #user;
     };
 
-    // JSON sub-module: everything needed for JSON serialization
     public module JSON {
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer PublicUserObjectType type
-        public type JSON = Text;
+        public func toCandidValue(value : PublicUserObjectType) : Candid.Candid =
+            switch (value) {
+                case (#user) #Text("user");
+            };
 
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : PublicUserObjectType) : JSON =
+        public func fromCandidValue(candid : Candid.Candid) : ?PublicUserObjectType =
+            switch (candid) {
+                case (#Text("user")) ?#user;
+                case _ null;
+            };
+
+        public func toText(value : PublicUserObjectType) : Text =
             switch (value) {
                 case (#user) "user";
             };
-
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?PublicUserObjectType =
-            switch (json) {
-                case "user" ?#user;
-                case _ null;
-            };
-    }
-}
+    };
+};

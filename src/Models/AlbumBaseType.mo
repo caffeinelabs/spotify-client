@@ -1,31 +1,33 @@
 /// The object type. 
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
+import Runtime "mo:core/Runtime";
 
 // AlbumBaseType.mo
 /// Enum values: #album
 
 module {
-    // User-facing type: type-safe variants for application code
     public type AlbumBaseType = {
         #album;
     };
 
-    // JSON sub-module: everything needed for JSON serialization
     public module JSON {
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer AlbumBaseType type
-        public type JSON = Text;
+        public func toCandidValue(value : AlbumBaseType) : Candid.Candid =
+            switch (value) {
+                case (#album) #Text("album");
+            };
 
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : AlbumBaseType) : JSON =
+        public func fromCandidValue(candid : Candid.Candid) : ?AlbumBaseType =
+            switch (candid) {
+                case (#Text("album")) ?#album;
+                case _ null;
+            };
+
+        public func toText(value : AlbumBaseType) : Text =
             switch (value) {
                 case (#album) "album";
             };
-
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?AlbumBaseType =
-            switch (json) {
-                case "album" ?#album;
-                case _ null;
-            };
-    }
-}
+    };
+};

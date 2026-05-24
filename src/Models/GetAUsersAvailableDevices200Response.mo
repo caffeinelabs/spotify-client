@@ -1,26 +1,80 @@
 
 import { type DeviceObject; JSON = DeviceObject } "./DeviceObject";
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
+import Runtime "mo:core/Runtime";
 
 // GetAUsersAvailableDevices200Response.mo
 
 module {
-    // User-facing type: what application code uses
-    public type GetAUsersAvailableDevices200Response = {
+    /// The required-fields slice of GetAUsersAvailableDevices200Response — what `init` consumes.
+    /// Exposed so callers can write `let req : Required = {...}` if they want
+    /// to manipulate the required-only payload independently of the full record.
+    public type Required = {
         devices : [DeviceObject];
     };
 
-    // JSON sub-module: everything needed for JSON serialization
+    // Optional-fields slice. Private — not part of the consumer surface;
+    // it's an internal scaffold so we can express GetAUsersAvailableDevices200Response as an
+    // `and`-intersection and keep `init` from listing every optional explicitly.
+    type Optional = {
+    };
+
+    public type GetAUsersAvailableDevices200Response = Required and Optional;
+
     public module JSON {
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer GetAUsersAvailableDevices200Response type
-        public type JSON = {
-            devices : [DeviceObject];
+        // `init` constructs a GetAUsersAvailableDevices200Response from just its required fields,
+        // defaulting all optional fields to `null`. Pair with record-update
+        // syntax to layer in selected optionals:
+        //   let req = { GetAUsersAvailableDevices200Response.init { …required fields… } with someOpt = ?… };
+        // Implementation uses Candid round-trip — Candid record subtyping fills
+        // absent optional fields with null. Costs a few cycles per call (init is
+        // not on a hot path) but keeps generated code compact regardless of how
+        // many optional fields the model has.
+        public func init(required : Required) : GetAUsersAvailableDevices200Response {
+            let ?res = from_candid(to_candid(required)) : ?GetAUsersAvailableDevices200Response else Runtime.unreachable();
+            res
         };
 
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : GetAUsersAvailableDevices200Response) : JSON = value;
+        public func toCandidValue(value : GetAUsersAvailableDevices200Response) : Candid.Candid {
+            let buf = List.empty<(Text, Candid.Candid)>();
+            List.add(buf, ("devices", #Array(Array.map<DeviceObject, Candid.Candid>(value.devices, DeviceObject.toCandidValue))));
+            #Record(List.toArray(buf));
+        };
 
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?GetAUsersAvailableDevices200Response = ?json;
-    }
-}
+        public func fromCandidValue(candid : Candid.Candid) : ?GetAUsersAvailableDevices200Response =
+            switch (candid) {
+                case (#Record(fields)) {
+                    let ?devices_field = Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "devices") else return null;
+                    let ?devices = ((switch (devices_field.1) {
+                        case (#Array(xs__)) {
+                            let buf__ = List.empty<DeviceObject>();
+                            for (c__ in xs__.values()) {
+                                let ?m__ = DeviceObject.fromCandidValue(c__) else return null;
+                                List.add(buf__, m__);
+                            };
+                            ?List.toArray(buf__);
+                        };
+                        case _ null;
+                    })) else return null;
+                    ?{
+                        devices;
+                    };
+                };
+                case _ null;
+            };
+    };
+
+    /// Re-export of `JSON.init` at the outer module level. Three import shapes
+    /// all reach the same function:
+    ///
+    ///   - `import T "...";                                     T.init {…}`     // whole-module
+    ///   - `import { type T; JSON = T } "...";                  T.init {…}`     // JSON-alias
+    ///   - `import { type T; JSON = T; init = myInit } "...";   myInit {…}`     // explicit rename
+    ///
+    /// The third form is handy when several models would all be reachable
+    /// as `T.init` and you want each bound to a distinct local name.
+    public let init = JSON.init;
+};

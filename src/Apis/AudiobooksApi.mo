@@ -2,11 +2,15 @@
 
 import Text "mo:core/Text";
 import Int "mo:core/Int";
+import Nat "mo:core/Nat";
+import Iter "mo:core/Iter";
 import Blob "mo:core/Blob";
 import Array "mo:core/Array";
+import List "mo:core/List";
 import Error "mo:core/Error";
 import Base64 "mo:core/Base64";
-import { JSON } "mo:serde";
+import { JSON; Candid } "mo:serde-core";
+import { type HttpRequestArgs; type HttpRequestResult; type HttpHeader } "mo:ic/Types";
 import { type AudiobookObject; JSON = AudiobookObject } "../Models/AudiobookObject";
 import { type GetAnAlbum401Response; JSON = GetAnAlbum401Response } "../Models/GetAnAlbum401Response";
 import { type GetMultipleAudiobooks200Response; JSON = GetMultipleAudiobooks200Response } "../Models/GetMultipleAudiobooks200Response";
@@ -15,47 +19,16 @@ import { type PagingSimplifiedChapterObject; JSON = PagingSimplifiedChapterObjec
 import { type Config } "../Config";
 
 module {
-    // Management Canister interface for HTTP outcalls
-    // Based on types in https://github.com/dfinity/sdk/blob/master/src/dfx/src/util/ic.did
-    type http_header = {
-        name : Text;
-        value : Text;
-    };
-
-    type http_method = {
-        #get;
-        #head;
-        #post;
-        #put;    // Non-replicated only (is_replicated forced to ?false in generated code)
-        #delete; // Non-replicated only (is_replicated forced to ?false in generated code)
-    };
-
-    type http_request_args = {
-        url : Text;
-        max_response_bytes : ?Nat64;
-        method : http_method;
-        headers : [http_header];
-        body : ?Blob;
-        transform : ?{
-            function : shared query ({ response : http_request_result; context : Blob }) -> async http_request_result;
-            context : Blob;
-        };
-        is_replicated : ?Bool;
-    };
-
-    type http_request_result = {
-        status : Nat;
-        headers : [http_header];
-        body : Blob;
-    };
-
-    let http_request = (actor "aaaaa-aa" : actor { http_request : (http_request_args) -> async http_request_result }).http_request;
+    let http_request = (actor "aaaaa-aa" : actor { http_request : (HttpRequestArgs) -> async HttpRequestResult }).http_request;
 
 
     /// Check User's Saved Audiobooks 
     ///
     /// Check if one or more audiobooks are already saved in the current Spotify user's library. 
     public func checkUsersSavedAudiobooks(config : Config, ids : Text) : async* [Bool] {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/audiobooks/contains"
             # "?" # "ids=" # ids;
@@ -85,12 +58,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -98,7 +71,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -107,14 +80,20 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?[Bool] |>
             (switch (_) {
-                case (?result) result;
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+                case (#Array(xs__)) {
+                    let buf__ = List.empty<Bool>();
+                    for (c__ in xs__.values()) {
+                        let #Bool(v__) = c__ else throw Error.reject("HTTP " # Int.toText(response.status) # ": Expected array of Bool");
+                        List.add(buf__, v__);
+                    };
+                    List.toArray(buf__);
+                };
+                case _ throw Error.reject("HTTP " # Int.toText(response.status) # ": Expected JSON array");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -126,16 +105,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -147,16 +120,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -168,16 +135,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -197,6 +158,9 @@ module {
     ///
     /// Get Spotify catalog information for a single audiobook. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
     public func getAnAudiobook(config : Config, id : Text, market : Text) : async* AudiobookObject {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/audiobooks/{id}"
             |> Text.replace(_, #text "{id}", id)
@@ -227,12 +191,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -240,7 +204,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -249,19 +213,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?AudiobookObject.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (AudiobookObject.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to AudiobookObject");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (AudiobookObject.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to AudiobookObject");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -273,16 +231,10 @@ module {
             // Try parsing 400 response as GetAnAlbum401Response
             if (response.status == 400) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -294,16 +246,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -315,16 +261,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -336,16 +276,10 @@ module {
             // Try parsing 404 response as GetAnAlbum401Response
             if (response.status == 404) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -357,16 +291,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -386,6 +314,9 @@ module {
     ///
     /// Get Spotify catalog information about an audiobook's chapters. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
     public func getAudiobookChapters(config : Config, id : Text, market : Text, limit : Nat, offset : Int) : async* PagingSimplifiedChapterObject {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/audiobooks/{id}/chapters"
             |> Text.replace(_, #text "{id}", id)
@@ -416,12 +347,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -429,7 +360,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -438,19 +369,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?PagingSimplifiedChapterObject.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (PagingSimplifiedChapterObject.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PagingSimplifiedChapterObject");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (PagingSimplifiedChapterObject.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PagingSimplifiedChapterObject");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -462,16 +387,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -483,16 +402,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -504,16 +417,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -533,6 +440,9 @@ module {
     ///
     /// Get Spotify catalog information for several audiobooks identified by their Spotify IDs. Audiobooks are only available within the US, UK, Canada, Ireland, New Zealand and Australia markets. 
     public func getMultipleAudiobooks(config : Config, ids : Text, market : Text) : async* GetMultipleAudiobooks200Response {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/audiobooks"
             # "?" # "ids=" # ids # "&" # "market=" # market;
@@ -562,12 +472,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -575,7 +485,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -584,19 +494,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?GetMultipleAudiobooks200Response.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (GetMultipleAudiobooks200Response.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to GetMultipleAudiobooks200Response");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (GetMultipleAudiobooks200Response.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to GetMultipleAudiobooks200Response");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -608,16 +512,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -629,16 +527,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -650,16 +542,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -679,6 +565,9 @@ module {
     ///
     /// Get a list of the audiobooks saved in the current Spotify user's 'Your Music' library. 
     public func getUsersSavedAudiobooks(config : Config, limit : Nat, offset : Int) : async* PagingSimplifiedAudiobookObject {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/audiobooks"
             # "?" # "limit=" # Int.toText(limit) # "&" # "offset=" # Int.toText(offset);
@@ -708,12 +597,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -721,7 +610,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -730,19 +619,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?PagingSimplifiedAudiobookObject.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (PagingSimplifiedAudiobookObject.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PagingSimplifiedAudiobookObject");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (PagingSimplifiedAudiobookObject.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PagingSimplifiedAudiobookObject");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -754,16 +637,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -775,16 +652,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -796,16 +667,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -825,6 +690,9 @@ module {
     ///
     /// Remove one or more audiobooks from the Spotify user's library. 
     public func removeAudiobooksUser(config : Config, ids : Text) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/audiobooks"
             # "?" # "ids=" # ids;
@@ -854,12 +722,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #delete;
             headers;
@@ -875,6 +743,9 @@ module {
     ///
     /// Save one or more audiobooks to the current Spotify user's library. 
     public func saveAudiobooksUser(config : Config, ids : Text) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/audiobooks"
             # "?" # "ids=" # ids;
@@ -904,12 +775,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #put;
             headers;

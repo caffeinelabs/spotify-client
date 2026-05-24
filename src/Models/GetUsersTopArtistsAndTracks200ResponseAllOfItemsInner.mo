@@ -18,45 +18,58 @@ import { type TrackObject; JSON = TrackObject } "./TrackObject";
 import { type TrackObjectType; JSON = TrackObjectType } "./TrackObjectType";
 
 import { type TrackRestrictionObject; JSON = TrackRestrictionObject } "./TrackRestrictionObject";
-
-// GetUsersTopArtistsAndTracks200ResponseAllOfItemsInner.mo
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
 import Runtime "mo:core/Runtime";
 
+// GetUsersTopArtistsAndTracks200ResponseAllOfItemsInner.mo
+// Discriminator-oneOf — wire is a flat object whose `type`
+// field selects the schema. Branches' `toCandidValue` already include that field, so dispatch
+// is just a forward call (no re-wrapping).
+
 module {
-    // User-facing type: discriminated union (oneOf)
     public type GetUsersTopArtistsAndTracks200ResponseAllOfItemsInner = {
-        #ArtistObject : ArtistObject;
-        #TrackObject : TrackObject;
+        #artist : ArtistObject;
+        #track : TrackObject;
     };
 
-    // JSON sub-module: everything needed for JSON serialization
     public module JSON {
-        // Convert oneOf variant to Text for URL parameters
+        public func toCandidValue(value : GetUsersTopArtistsAndTracks200ResponseAllOfItemsInner) : Candid.Candid =
+            switch (value) {
+                case (#artist(v)) ArtistObject.toCandidValue(v);
+                case (#track(v)) TrackObject.toCandidValue(v);
+            };
+
         public func toText(value : GetUsersTopArtistsAndTracks200ResponseAllOfItemsInner) : Text =
             switch (value) {
-                case (#ArtistObject(v)) Runtime.unreachable();
-                case (#TrackObject(v)) Runtime.unreachable();
+                case (#artist(_)) "artist";
+                case (#track(_)) "track";
             };
 
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer GetUsersTopArtistsAndTracks200ResponseAllOfItemsInner type
-        public type JSON = {
-            #ArtistObject : ArtistObject;
-            #TrackObject : TrackObject;
-        };
-
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : GetUsersTopArtistsAndTracks200ResponseAllOfItemsInner) : JSON =
-            switch (value) {
-                case (#ArtistObject(v)) #ArtistObject(v);
-                case (#TrackObject(v)) #TrackObject(v);
+        public func fromCandidValue(candid : Candid.Candid) : ?GetUsersTopArtistsAndTracks200ResponseAllOfItemsInner =
+            switch (candid) {
+                case (#Record(fields)) {
+                    let ?discPair = Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "type") else return null;
+                    switch (discPair.1) {
+                        case (#Text(disc)) {
+                            switch (disc) {
+                                case ("artist") {
+                                    let ?inner = ArtistObject.fromCandidValue(candid) else return null;
+                                    ?#artist(inner);
+                                };
+                                case ("track") {
+                                    let ?inner = TrackObject.fromCandidValue(candid) else return null;
+                                    ?#track(inner);
+                                };
+                                case _ null;
+                            };
+                        };
+                        case _ null;
+                    };
+                };
+                case _ null;
             };
-
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?GetUsersTopArtistsAndTracks200ResponseAllOfItemsInner =
-            switch (json) {
-                case (#ArtistObject(v)) ?#ArtistObject(v);
-                case (#TrackObject(v)) ?#TrackObject(v);
-            };
-    }
-}
+    };
+};

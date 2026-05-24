@@ -2,11 +2,15 @@
 
 import Text "mo:core/Text";
 import Int "mo:core/Int";
+import Nat "mo:core/Nat";
+import Iter "mo:core/Iter";
 import Blob "mo:core/Blob";
 import Array "mo:core/Array";
+import List "mo:core/List";
 import Error "mo:core/Error";
 import Base64 "mo:core/Base64";
-import { JSON } "mo:serde";
+import { JSON; Candid } "mo:serde-core";
+import { type HttpRequestArgs; type HttpRequestResult; type HttpHeader } "mo:ic/Types";
 import { type CurrentlyPlayingContextObject; JSON = CurrentlyPlayingContextObject } "../Models/CurrentlyPlayingContextObject";
 import { type CursorPagingPlayHistoryObject; JSON = CursorPagingPlayHistoryObject } "../Models/CursorPagingPlayHistoryObject";
 import { type GetAUsersAvailableDevices200Response; JSON = GetAUsersAvailableDevices200Response } "../Models/GetAUsersAvailableDevices200Response";
@@ -17,47 +21,16 @@ import { type TransferAUsersPlaybackRequest; JSON = TransferAUsersPlaybackReques
 import { type Config } "../Config";
 
 module {
-    // Management Canister interface for HTTP outcalls
-    // Based on types in https://github.com/dfinity/sdk/blob/master/src/dfx/src/util/ic.did
-    type http_header = {
-        name : Text;
-        value : Text;
-    };
-
-    type http_method = {
-        #get;
-        #head;
-        #post;
-        #put;    // Non-replicated only (is_replicated forced to ?false in generated code)
-        #delete; // Non-replicated only (is_replicated forced to ?false in generated code)
-    };
-
-    type http_request_args = {
-        url : Text;
-        max_response_bytes : ?Nat64;
-        method : http_method;
-        headers : [http_header];
-        body : ?Blob;
-        transform : ?{
-            function : shared query ({ response : http_request_result; context : Blob }) -> async http_request_result;
-            context : Blob;
-        };
-        is_replicated : ?Bool;
-    };
-
-    type http_request_result = {
-        status : Nat;
-        headers : [http_header];
-        body : Blob;
-    };
-
-    let http_request = (actor "aaaaa-aa" : actor { http_request : (http_request_args) -> async http_request_result }).http_request;
+    let http_request = (actor "aaaaa-aa" : actor { http_request : (HttpRequestArgs) -> async HttpRequestResult }).http_request;
 
 
     /// Add Item to Playback Queue 
     ///
     /// Add an item to be played next in the user's current playback queue. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
     public func addToQueue(config : Config, uri : Text, deviceId : Text) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/queue"
             # "?" # "uri=" # uri # "&" # "device_id=" # deviceId;
@@ -87,12 +60,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #post;
             headers;
@@ -108,6 +81,9 @@ module {
     ///
     /// Get information about a user’s available Spotify Connect devices. Some device models are not supported and will not be listed in the API response. 
     public func getAUsersAvailableDevices(config : Config) : async* GetAUsersAvailableDevices200Response {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/devices";
 
@@ -136,12 +112,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -149,7 +125,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -158,19 +134,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?GetAUsersAvailableDevices200Response.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (GetAUsersAvailableDevices200Response.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to GetAUsersAvailableDevices200Response");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (GetAUsersAvailableDevices200Response.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to GetAUsersAvailableDevices200Response");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -182,16 +152,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -203,16 +167,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -224,16 +182,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -253,6 +205,9 @@ module {
     ///
     /// Get information about the user’s current playback state, including track or episode, progress, and active device. 
     public func getInformationAboutTheUsersCurrentPlayback(config : Config, market : Text, additionalTypes : Text) : async* CurrentlyPlayingContextObject {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player"
             # "?" # "market=" # market # "&" # "additional_types=" # additionalTypes;
@@ -282,12 +237,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -295,7 +250,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -304,19 +259,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?CurrentlyPlayingContextObject.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (CurrentlyPlayingContextObject.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to CurrentlyPlayingContextObject");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (CurrentlyPlayingContextObject.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to CurrentlyPlayingContextObject");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -328,16 +277,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -349,16 +292,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -370,16 +307,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -399,6 +330,9 @@ module {
     ///
     /// Get the list of objects that make up the user's queue. 
     public func getQueue(config : Config) : async* QueueObject {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/queue";
 
@@ -427,12 +361,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -440,7 +374,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -449,19 +383,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?QueueObject.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (QueueObject.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to QueueObject");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (QueueObject.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to QueueObject");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -473,16 +401,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -494,16 +416,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -515,16 +431,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -544,6 +454,9 @@ module {
     ///
     /// Get tracks from the current user's recently played tracks. _**Note**: Currently doesn't support podcast episodes._ 
     public func getRecentlyPlayed(config : Config, limit : Nat, after : Int, before : Int) : async* CursorPagingPlayHistoryObject {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/recently-played"
             # "?" # "limit=" # Int.toText(limit) # "&" # "after=" # Int.toText(after) # "&" # "before=" # Int.toText(before);
@@ -573,12 +486,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -586,7 +499,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -595,19 +508,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?CursorPagingPlayHistoryObject.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (CursorPagingPlayHistoryObject.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to CursorPagingPlayHistoryObject");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (CursorPagingPlayHistoryObject.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to CursorPagingPlayHistoryObject");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -619,16 +526,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -640,16 +541,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -661,16 +556,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -690,6 +579,9 @@ module {
     ///
     /// Get the object currently being played on the user's Spotify account. 
     public func getTheUsersCurrentlyPlayingTrack(config : Config, market : Text, additionalTypes : Text) : async* CurrentlyPlayingContextObject {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/currently-playing"
             # "?" # "market=" # market # "&" # "additional_types=" # additionalTypes;
@@ -719,12 +611,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -732,7 +624,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -741,19 +633,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?CurrentlyPlayingContextObject.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (CurrentlyPlayingContextObject.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to CurrentlyPlayingContextObject");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (CurrentlyPlayingContextObject.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to CurrentlyPlayingContextObject");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -765,16 +651,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -786,16 +666,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -807,16 +681,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -836,6 +704,9 @@ module {
     ///
     /// Pause playback on the user's account. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
     public func pauseAUsersPlayback(config : Config, deviceId : Text) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/pause"
             # "?" # "device_id=" # deviceId;
@@ -865,12 +736,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #put;
             headers;
@@ -886,6 +757,9 @@ module {
     ///
     /// Seeks to the given position in the user’s currently playing track. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
     public func seekToPositionInCurrentlyPlayingTrack(config : Config, positionMs : Int, deviceId : Text) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/seek"
             # "?" # "position_ms=" # Int.toText(positionMs) # "&" # "device_id=" # deviceId;
@@ -915,12 +789,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #put;
             headers;
@@ -936,6 +810,9 @@ module {
     ///
     /// Set the repeat mode for the user's playback. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
     public func setRepeatModeOnUsersPlayback(config : Config, state : Text, deviceId : Text) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/repeat"
             # "?" # "state=" # state # "&" # "device_id=" # deviceId;
@@ -965,12 +842,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #put;
             headers;
@@ -986,6 +863,9 @@ module {
     ///
     /// Set the volume for the user’s current playback device. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
     public func setVolumeForUsersPlayback(config : Config, volumePercent : Int, deviceId : Text) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/volume"
             # "?" # "volume_percent=" # Int.toText(volumePercent) # "&" # "device_id=" # deviceId;
@@ -1015,12 +895,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #put;
             headers;
@@ -1036,6 +916,9 @@ module {
     ///
     /// Skips to next track in the user’s queue. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
     public func skipUsersPlaybackToNextTrack(config : Config, deviceId : Text) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/next"
             # "?" # "device_id=" # deviceId;
@@ -1065,12 +948,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #post;
             headers;
@@ -1086,6 +969,9 @@ module {
     ///
     /// Skips to previous track in the user’s queue. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
     public func skipUsersPlaybackToPreviousTrack(config : Config, deviceId : Text) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/previous"
             # "?" # "device_id=" # deviceId;
@@ -1115,12 +1001,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #post;
             headers;
@@ -1136,6 +1022,9 @@ module {
     ///
     /// Start a new context or resume current playback on the user's active device. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
     public func startAUsersPlayback(config : Config, deviceId : Text, startAUsersPlaybackRequest : StartAUsersPlaybackRequest) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/play"
             # "?" # "device_id=" # deviceId;
@@ -1165,19 +1054,19 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #put;
             headers;
             body = do ? {
-                let jsonValue = StartAUsersPlaybackRequest.toJSON(startAUsersPlaybackRequest);
-                let candidBlob = to_candid(jsonValue);
-                let #ok(jsonText) = JSON.toText(candidBlob, [], null) else throw Error.reject("Failed to serialize to JSON");
+                let candidValue : Candid.Candid = StartAUsersPlaybackRequest.toCandidValue(startAUsersPlaybackRequest);
+                let #ok(jsonText) = JSON.fromCandid(candidValue)
+                    else throw Error.reject("Failed to serialize body to JSON");
                 Text.encodeUtf8(jsonText)
             };
         };
@@ -1191,6 +1080,9 @@ module {
     ///
     /// Toggle shuffle on or off for user’s playback. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
     public func toggleShuffleForUsersPlayback(config : Config, state : Bool, deviceId : Text) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player/shuffle"
             # "?" # "state=" # debug_show(state) # "&" # "device_id=" # deviceId;
@@ -1220,12 +1112,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #put;
             headers;
@@ -1241,6 +1133,9 @@ module {
     ///
     /// Transfer playback to a new device and optionally begin playback. This API only works for users who have Spotify Premium. The order of execution is not guaranteed when you use this API with other Player API endpoints. 
     public func transferAUsersPlayback(config : Config, transferAUsersPlaybackRequest : TransferAUsersPlaybackRequest) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/player";
 
@@ -1269,19 +1164,19 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #put;
             headers;
             body = do ? {
-                let jsonValue = TransferAUsersPlaybackRequest.toJSON(transferAUsersPlaybackRequest);
-                let candidBlob = to_candid(jsonValue);
-                let #ok(jsonText) = JSON.toText(candidBlob, [], null) else throw Error.reject("Failed to serialize to JSON");
+                let candidValue : Candid.Candid = TransferAUsersPlaybackRequest.toCandidValue(transferAUsersPlaybackRequest);
+                let #ok(jsonText) = JSON.fromCandid(candidValue)
+                    else throw Error.reject("Failed to serialize body to JSON");
                 Text.encodeUtf8(jsonText)
             };
         };

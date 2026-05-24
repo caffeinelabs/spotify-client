@@ -1,31 +1,33 @@
 /// The object type. 
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
+import Runtime "mo:core/Runtime";
 
 // ArtistObjectType.mo
 /// Enum values: #artist
 
 module {
-    // User-facing type: type-safe variants for application code
     public type ArtistObjectType = {
         #artist;
     };
 
-    // JSON sub-module: everything needed for JSON serialization
     public module JSON {
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer ArtistObjectType type
-        public type JSON = Text;
+        public func toCandidValue(value : ArtistObjectType) : Candid.Candid =
+            switch (value) {
+                case (#artist) #Text("artist");
+            };
 
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : ArtistObjectType) : JSON =
+        public func fromCandidValue(candid : Candid.Candid) : ?ArtistObjectType =
+            switch (candid) {
+                case (#Text("artist")) ?#artist;
+                case _ null;
+            };
+
+        public func toText(value : ArtistObjectType) : Text =
             switch (value) {
                 case (#artist) "artist";
             };
-
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?ArtistObjectType =
-            switch (json) {
-                case "artist" ?#artist;
-                case _ null;
-            };
-    }
-}
+    };
+};

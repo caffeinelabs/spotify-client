@@ -1,31 +1,33 @@
 /// The ID type: currently only `artist` is supported. 
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
+import Runtime "mo:core/Runtime";
 
 // ItemType.mo
 /// Enum values: #artist
 
 module {
-    // User-facing type: type-safe variants for application code
     public type ItemType = {
         #artist;
     };
 
-    // JSON sub-module: everything needed for JSON serialization
     public module JSON {
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer ItemType type
-        public type JSON = Text;
+        public func toCandidValue(value : ItemType) : Candid.Candid =
+            switch (value) {
+                case (#artist) #Text("artist");
+            };
 
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : ItemType) : JSON =
+        public func fromCandidValue(candid : Candid.Candid) : ?ItemType =
+            switch (candid) {
+                case (#Text("artist")) ?#artist;
+                case _ null;
+            };
+
+        public func toText(value : ItemType) : Text =
             switch (value) {
                 case (#artist) "artist";
             };
-
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?ItemType =
-            switch (json) {
-                case "artist" ?#artist;
-                case _ null;
-            };
-    }
-}
+    };
+};

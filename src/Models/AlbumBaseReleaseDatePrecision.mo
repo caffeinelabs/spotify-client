@@ -1,37 +1,41 @@
 /// The precision with which `release_date` value is known. 
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
+import Runtime "mo:core/Runtime";
 
 // AlbumBaseReleaseDatePrecision.mo
 /// Enum values: #year, #month, #day
 
 module {
-    // User-facing type: type-safe variants for application code
     public type AlbumBaseReleaseDatePrecision = {
         #year;
         #month;
         #day;
     };
 
-    // JSON sub-module: everything needed for JSON serialization
     public module JSON {
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer AlbumBaseReleaseDatePrecision type
-        public type JSON = Text;
+        public func toCandidValue(value : AlbumBaseReleaseDatePrecision) : Candid.Candid =
+            switch (value) {
+                case (#year) #Text("year");
+                case (#month) #Text("month");
+                case (#day) #Text("day");
+            };
 
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : AlbumBaseReleaseDatePrecision) : JSON =
+        public func fromCandidValue(candid : Candid.Candid) : ?AlbumBaseReleaseDatePrecision =
+            switch (candid) {
+                case (#Text("year")) ?#year;
+                case (#Text("month")) ?#month;
+                case (#Text("day")) ?#day;
+                case _ null;
+            };
+
+        public func toText(value : AlbumBaseReleaseDatePrecision) : Text =
             switch (value) {
                 case (#year) "year";
                 case (#month) "month";
                 case (#day) "day";
             };
-
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?AlbumBaseReleaseDatePrecision =
-            switch (json) {
-                case "year" ?#year;
-                case "month" ?#month;
-                case "day" ?#day;
-                case _ null;
-            };
-    }
-}
+    };
+};

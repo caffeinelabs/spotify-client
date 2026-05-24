@@ -1,31 +1,33 @@
 /// The object type: \"track\". 
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
+import Runtime "mo:core/Runtime";
 
 // TrackObjectType.mo
 /// Enum values: #track
 
 module {
-    // User-facing type: type-safe variants for application code
     public type TrackObjectType = {
         #track;
     };
 
-    // JSON sub-module: everything needed for JSON serialization
     public module JSON {
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer TrackObjectType type
-        public type JSON = Text;
+        public func toCandidValue(value : TrackObjectType) : Candid.Candid =
+            switch (value) {
+                case (#track) #Text("track");
+            };
 
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : TrackObjectType) : JSON =
+        public func fromCandidValue(candid : Candid.Candid) : ?TrackObjectType =
+            switch (candid) {
+                case (#Text("track")) ?#track;
+                case _ null;
+            };
+
+        public func toText(value : TrackObjectType) : Text =
             switch (value) {
                 case (#track) "track";
             };
-
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?TrackObjectType =
-            switch (json) {
-                case "track" ?#track;
-                case _ null;
-            };
-    }
-}
+    };
+};

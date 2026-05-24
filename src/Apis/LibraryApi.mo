@@ -2,11 +2,15 @@
 
 import Text "mo:core/Text";
 import Int "mo:core/Int";
+import Nat "mo:core/Nat";
+import Iter "mo:core/Iter";
 import Blob "mo:core/Blob";
 import Array "mo:core/Array";
+import List "mo:core/List";
 import Error "mo:core/Error";
 import Base64 "mo:core/Base64";
-import { JSON } "mo:serde";
+import { JSON; Candid } "mo:serde-core";
+import { type HttpRequestArgs; type HttpRequestResult; type HttpHeader } "mo:ic/Types";
 import { type ChangePlaylistDetailsRequest; JSON = ChangePlaylistDetailsRequest } "../Models/ChangePlaylistDetailsRequest";
 import { type CreatePlaylistRequest; JSON = CreatePlaylistRequest } "../Models/CreatePlaylistRequest";
 import { type FollowArtistsUsersRequest; JSON = FollowArtistsUsersRequest } "../Models/FollowArtistsUsersRequest";
@@ -32,47 +36,16 @@ import { type UnfollowArtistsUsersRequest; JSON = UnfollowArtistsUsersRequest } 
 import { type Config } "../Config";
 
 module {
-    // Management Canister interface for HTTP outcalls
-    // Based on types in https://github.com/dfinity/sdk/blob/master/src/dfx/src/util/ic.did
-    type http_header = {
-        name : Text;
-        value : Text;
-    };
-
-    type http_method = {
-        #get;
-        #head;
-        #post;
-        #put;    // Non-replicated only (is_replicated forced to ?false in generated code)
-        #delete; // Non-replicated only (is_replicated forced to ?false in generated code)
-    };
-
-    type http_request_args = {
-        url : Text;
-        max_response_bytes : ?Nat64;
-        method : http_method;
-        headers : [http_header];
-        body : ?Blob;
-        transform : ?{
-            function : shared query ({ response : http_request_result; context : Blob }) -> async http_request_result;
-            context : Blob;
-        };
-        is_replicated : ?Bool;
-    };
-
-    type http_request_result = {
-        status : Nat;
-        headers : [http_header];
-        body : Blob;
-    };
-
-    let http_request = (actor "aaaaa-aa" : actor { http_request : (http_request_args) -> async http_request_result }).http_request;
+    let http_request = (actor "aaaaa-aa" : actor { http_request : (HttpRequestArgs) -> async HttpRequestResult }).http_request;
 
 
     /// Change Playlist Details 
     ///
     /// Change a playlist's name and public/private state. (The user must, of course, own the playlist.) 
     public func changePlaylistDetails(config : Config, playlistId : Text, changePlaylistDetailsRequest : ChangePlaylistDetailsRequest) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/playlists/{playlist_id}"
             |> Text.replace(_, #text "{playlist_id}", playlistId);
@@ -102,19 +75,19 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #put;
             headers;
             body = do ? {
-                let jsonValue = ChangePlaylistDetailsRequest.toJSON(changePlaylistDetailsRequest);
-                let candidBlob = to_candid(jsonValue);
-                let #ok(jsonText) = JSON.toText(candidBlob, [], null) else throw Error.reject("Failed to serialize to JSON");
+                let candidValue : Candid.Candid = ChangePlaylistDetailsRequest.toCandidValue(changePlaylistDetailsRequest);
+                let #ok(jsonText) = JSON.fromCandid(candidValue)
+                    else throw Error.reject("Failed to serialize body to JSON");
                 Text.encodeUtf8(jsonText)
             };
         };
@@ -128,9 +101,12 @@ module {
     ///
     /// Check to see if the current user is following one or more artists or other Spotify users. 
     public func checkCurrentUserFollows(config : Config, type_ : ItemType2, ids : Text) : async* [Bool] {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/following/contains"
-            # "?" # "type=" # ItemType2.toJSON(type_) # "&" # "ids=" # ids;
+            # "?" # "type=" # ItemType2.toText(type_) # "&" # "ids=" # ids;
 
         // Add API key as query parameter if using apiKey auth
         let url = switch (config.auth) {
@@ -157,12 +133,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -170,7 +146,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -179,14 +155,20 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?[Bool] |>
             (switch (_) {
-                case (?result) result;
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+                case (#Array(xs__)) {
+                    let buf__ = List.empty<Bool>();
+                    for (c__ in xs__.values()) {
+                        let #Bool(v__) = c__ else throw Error.reject("HTTP " # Int.toText(response.status) # ": Expected array of Bool");
+                        List.add(buf__, v__);
+                    };
+                    List.toArray(buf__);
+                };
+                case _ throw Error.reject("HTTP " # Int.toText(response.status) # ": Expected JSON array");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -198,16 +180,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -219,16 +195,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -240,16 +210,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -269,6 +233,9 @@ module {
     ///
     /// Check if one or more albums is already saved in the current Spotify user's 'Your Music' library. 
     public func checkUsersSavedAlbums(config : Config, ids : Text) : async* [Bool] {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/albums/contains"
             # "?" # "ids=" # ids;
@@ -298,12 +265,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -311,7 +278,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -320,14 +287,20 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?[Bool] |>
             (switch (_) {
-                case (?result) result;
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+                case (#Array(xs__)) {
+                    let buf__ = List.empty<Bool>();
+                    for (c__ in xs__.values()) {
+                        let #Bool(v__) = c__ else throw Error.reject("HTTP " # Int.toText(response.status) # ": Expected array of Bool");
+                        List.add(buf__, v__);
+                    };
+                    List.toArray(buf__);
+                };
+                case _ throw Error.reject("HTTP " # Int.toText(response.status) # ": Expected JSON array");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -339,16 +312,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -360,16 +327,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -381,16 +342,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -410,6 +365,9 @@ module {
     ///
     /// Check if one or more audiobooks are already saved in the current Spotify user's library. 
     public func checkUsersSavedAudiobooks(config : Config, ids : Text) : async* [Bool] {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/audiobooks/contains"
             # "?" # "ids=" # ids;
@@ -439,12 +397,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -452,7 +410,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -461,14 +419,20 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?[Bool] |>
             (switch (_) {
-                case (?result) result;
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+                case (#Array(xs__)) {
+                    let buf__ = List.empty<Bool>();
+                    for (c__ in xs__.values()) {
+                        let #Bool(v__) = c__ else throw Error.reject("HTTP " # Int.toText(response.status) # ": Expected array of Bool");
+                        List.add(buf__, v__);
+                    };
+                    List.toArray(buf__);
+                };
+                case _ throw Error.reject("HTTP " # Int.toText(response.status) # ": Expected JSON array");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -480,16 +444,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -501,16 +459,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -522,16 +474,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -551,6 +497,9 @@ module {
     ///
     /// Check if one or more episodes is already saved in the current Spotify user's 'Your Episodes' library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer).. 
     public func checkUsersSavedEpisodes(config : Config, ids : Text) : async* [Bool] {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/episodes/contains"
             # "?" # "ids=" # ids;
@@ -580,12 +529,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -593,7 +542,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -602,14 +551,20 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?[Bool] |>
             (switch (_) {
-                case (?result) result;
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+                case (#Array(xs__)) {
+                    let buf__ = List.empty<Bool>();
+                    for (c__ in xs__.values()) {
+                        let #Bool(v__) = c__ else throw Error.reject("HTTP " # Int.toText(response.status) # ": Expected array of Bool");
+                        List.add(buf__, v__);
+                    };
+                    List.toArray(buf__);
+                };
+                case _ throw Error.reject("HTTP " # Int.toText(response.status) # ": Expected JSON array");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -621,16 +576,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -642,16 +591,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -663,16 +606,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -692,6 +629,9 @@ module {
     ///
     /// Check if one or more shows is already saved in the current Spotify user's library. 
     public func checkUsersSavedShows(config : Config, ids : Text) : async* [Bool] {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/shows/contains"
             # "?" # "ids=" # ids;
@@ -721,12 +661,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -734,7 +674,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -743,14 +683,20 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?[Bool] |>
             (switch (_) {
-                case (?result) result;
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+                case (#Array(xs__)) {
+                    let buf__ = List.empty<Bool>();
+                    for (c__ in xs__.values()) {
+                        let #Bool(v__) = c__ else throw Error.reject("HTTP " # Int.toText(response.status) # ": Expected array of Bool");
+                        List.add(buf__, v__);
+                    };
+                    List.toArray(buf__);
+                };
+                case _ throw Error.reject("HTTP " # Int.toText(response.status) # ": Expected JSON array");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -762,16 +708,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -783,16 +723,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -804,16 +738,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -833,6 +761,9 @@ module {
     ///
     /// Check if one or more tracks is already saved in the current Spotify user's 'Your Music' library. 
     public func checkUsersSavedTracks(config : Config, ids : Text) : async* [Bool] {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/tracks/contains"
             # "?" # "ids=" # ids;
@@ -862,12 +793,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -875,7 +806,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -884,14 +815,20 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?[Bool] |>
             (switch (_) {
-                case (?result) result;
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+                case (#Array(xs__)) {
+                    let buf__ = List.empty<Bool>();
+                    for (c__ in xs__.values()) {
+                        let #Bool(v__) = c__ else throw Error.reject("HTTP " # Int.toText(response.status) # ": Expected array of Bool");
+                        List.add(buf__, v__);
+                    };
+                    List.toArray(buf__);
+                };
+                case _ throw Error.reject("HTTP " # Int.toText(response.status) # ": Expected JSON array");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -903,16 +840,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -924,16 +855,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -945,16 +870,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -974,6 +893,9 @@ module {
     ///
     /// Create a playlist for a Spotify user. (The playlist will be empty until you [add tracks](/documentation/web-api/reference/add-tracks-to-playlist).) Each user is generally limited to a maximum of 11000 playlists. 
     public func createPlaylist(config : Config, userId : Text, createPlaylistRequest : CreatePlaylistRequest) : async* PlaylistObject {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/users/{user_id}/playlists"
             |> Text.replace(_, #text "{user_id}", userId);
@@ -1003,25 +925,25 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #post;
             headers;
             body = do ? {
-                let jsonValue = CreatePlaylistRequest.toJSON(createPlaylistRequest);
-                let candidBlob = to_candid(jsonValue);
-                let #ok(jsonText) = JSON.toText(candidBlob, [], null) else throw Error.reject("Failed to serialize to JSON");
+                let candidValue : Candid.Candid = CreatePlaylistRequest.toCandidValue(createPlaylistRequest);
+                let #ok(jsonText) = JSON.fromCandid(candidValue)
+                    else throw Error.reject("Failed to serialize body to JSON");
                 Text.encodeUtf8(jsonText)
             };
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -1030,19 +952,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?PlaylistObject.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (PlaylistObject.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PlaylistObject");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (PlaylistObject.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PlaylistObject");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -1054,16 +970,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1075,16 +985,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1096,16 +1000,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1125,9 +1023,12 @@ module {
     ///
     /// Add the current user as a follower of one or more artists or other Spotify users. 
     public func followArtistsUsers(config : Config, type_ : ItemType1, ids : Text, followArtistsUsersRequest : FollowArtistsUsersRequest) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/following"
-            # "?" # "type=" # ItemType1.toJSON(type_) # "&" # "ids=" # ids;
+            # "?" # "type=" # ItemType1.toText(type_) # "&" # "ids=" # ids;
 
         // Add API key as query parameter if using apiKey auth
         let url = switch (config.auth) {
@@ -1154,19 +1055,19 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #put;
             headers;
             body = do ? {
-                let jsonValue = FollowArtistsUsersRequest.toJSON(followArtistsUsersRequest);
-                let candidBlob = to_candid(jsonValue);
-                let #ok(jsonText) = JSON.toText(candidBlob, [], null) else throw Error.reject("Failed to serialize to JSON");
+                let candidValue : Candid.Candid = FollowArtistsUsersRequest.toCandidValue(followArtistsUsersRequest);
+                let #ok(jsonText) = JSON.fromCandid(candidValue)
+                    else throw Error.reject("Failed to serialize body to JSON");
                 Text.encodeUtf8(jsonText)
             };
         };
@@ -1180,6 +1081,9 @@ module {
     ///
     /// Get a list of the playlists owned or followed by the current Spotify user. 
     public func getAListOfCurrentUsersPlaylists(config : Config, limit : Nat, offset : Int) : async* PagingPlaylistObject {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/playlists"
             # "?" # "limit=" # Int.toText(limit) # "&" # "offset=" # Int.toText(offset);
@@ -1209,12 +1113,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -1222,7 +1126,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -1231,19 +1135,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?PagingPlaylistObject.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (PagingPlaylistObject.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PagingPlaylistObject");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (PagingPlaylistObject.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PagingPlaylistObject");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -1255,16 +1153,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1276,16 +1168,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1297,16 +1183,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1326,9 +1206,12 @@ module {
     ///
     /// Get the current user's followed artists. 
     public func getFollowed(config : Config, type_ : ItemType, after : Text, limit : Nat) : async* GetFollowed200Response {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/following"
-            # "?" # "type=" # ItemType.toJSON(type_) # "&" # "after=" # after # "&" # "limit=" # Int.toText(limit);
+            # "?" # "type=" # ItemType.toText(type_) # "&" # "after=" # after # "&" # "limit=" # Int.toText(limit);
 
         // Add API key as query parameter if using apiKey auth
         let url = switch (config.auth) {
@@ -1355,12 +1238,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -1368,7 +1251,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -1377,19 +1260,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?GetFollowed200Response.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (GetFollowed200Response.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to GetFollowed200Response");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (GetFollowed200Response.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to GetFollowed200Response");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -1401,16 +1278,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1422,16 +1293,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1443,16 +1308,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1472,6 +1331,9 @@ module {
     ///
     /// Get a list of the albums saved in the current Spotify user's 'Your Music' library. 
     public func getUsersSavedAlbums(config : Config, limit : Nat, offset : Int, market : Text) : async* PagingSavedAlbumObject {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/albums"
             # "?" # "limit=" # Int.toText(limit) # "&" # "offset=" # Int.toText(offset) # "&" # "market=" # market;
@@ -1501,12 +1363,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -1514,7 +1376,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -1523,19 +1385,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?PagingSavedAlbumObject.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (PagingSavedAlbumObject.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PagingSavedAlbumObject");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (PagingSavedAlbumObject.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PagingSavedAlbumObject");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -1547,16 +1403,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1568,16 +1418,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1589,16 +1433,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1618,6 +1456,9 @@ module {
     ///
     /// Get a list of the audiobooks saved in the current Spotify user's 'Your Music' library. 
     public func getUsersSavedAudiobooks(config : Config, limit : Nat, offset : Int) : async* PagingSimplifiedAudiobookObject {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/audiobooks"
             # "?" # "limit=" # Int.toText(limit) # "&" # "offset=" # Int.toText(offset);
@@ -1647,12 +1488,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -1660,7 +1501,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -1669,19 +1510,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?PagingSimplifiedAudiobookObject.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (PagingSimplifiedAudiobookObject.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PagingSimplifiedAudiobookObject");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (PagingSimplifiedAudiobookObject.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PagingSimplifiedAudiobookObject");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -1693,16 +1528,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1714,16 +1543,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1735,16 +1558,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1764,6 +1581,9 @@ module {
     ///
     /// Get a list of the episodes saved in the current Spotify user's library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer). 
     public func getUsersSavedEpisodes(config : Config, market : Text, limit : Nat, offset : Int) : async* PagingSavedEpisodeObject {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/episodes"
             # "?" # "market=" # market # "&" # "limit=" # Int.toText(limit) # "&" # "offset=" # Int.toText(offset);
@@ -1793,12 +1613,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -1806,7 +1626,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -1815,19 +1635,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?PagingSavedEpisodeObject.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (PagingSavedEpisodeObject.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PagingSavedEpisodeObject");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (PagingSavedEpisodeObject.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PagingSavedEpisodeObject");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -1839,16 +1653,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1860,16 +1668,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1881,16 +1683,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -1910,6 +1706,9 @@ module {
     ///
     /// Get a list of shows saved in the current Spotify user's library. Optional parameters can be used to limit the number of shows returned. 
     public func getUsersSavedShows(config : Config, limit : Nat, offset : Int) : async* PagingSavedShowObject {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/shows"
             # "?" # "limit=" # Int.toText(limit) # "&" # "offset=" # Int.toText(offset);
@@ -1939,12 +1738,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -1952,7 +1751,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -1961,19 +1760,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?PagingSavedShowObject.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (PagingSavedShowObject.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PagingSavedShowObject");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (PagingSavedShowObject.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PagingSavedShowObject");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -1985,16 +1778,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -2006,16 +1793,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -2027,16 +1808,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -2056,6 +1831,9 @@ module {
     ///
     /// Get a list of the songs saved in the current Spotify user's 'Your Music' library. 
     public func getUsersSavedTracks(config : Config, market : Text, limit : Nat, offset : Int) : async* PagingSavedTrackObject {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/tracks"
             # "?" # "market=" # market # "&" # "limit=" # Int.toText(limit) # "&" # "offset=" # Int.toText(offset);
@@ -2085,12 +1863,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -2098,7 +1876,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -2107,19 +1885,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?PagingSavedTrackObject.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (PagingSavedTrackObject.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PagingSavedTrackObject");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (PagingSavedTrackObject.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to PagingSavedTrackObject");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -2131,16 +1903,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -2152,16 +1918,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -2173,16 +1933,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -2202,9 +1956,12 @@ module {
     ///
     /// Get the current user's top artists or tracks based on calculated affinity. 
     public func getUsersTopArtistsAndTracks(config : Config, type_ : Type_, timeRange : Text, limit : Nat, offset : Int) : async* GetUsersTopArtistsAndTracks200Response {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/top/{type}"
-            |> Text.replace(_, #text "{type}", Type_.toJSON(type_))
+            |> Text.replace(_, #text "{type}", Type_.toText(type_))
             # "?" # "time_range=" # timeRange # "&" # "limit=" # Int.toText(limit) # "&" # "offset=" # Int.toText(offset);
 
         // Add API key as query parameter if using apiKey auth
@@ -2232,12 +1989,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #get;
             headers;
@@ -2245,7 +2002,7 @@ module {
         };
 
         // Call the management canister's http_request method with cycles
-        let response : http_request_result = await (with cycles) http_request(request);
+        let response : HttpRequestResult = await (with cycles) http_request(request);
 
         // Check HTTP status code before parsing
         if (response.status >= 200 and response.status < 300) {
@@ -2254,19 +2011,13 @@ module {
                 case (?text) text;
                 case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to decode response body as UTF-8");
             }) |>
-            (switch (JSON.fromText(_, null)) {
-                case (#ok(blob)) blob;
+            (switch (JSON.toCandid(_)) {
+                case (#ok(c__)) c__;
                 case (#err(msg)) throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to parse JSON: " # msg);
             }) |>
-            from_candid(_) : ?GetUsersTopArtistsAndTracks200Response.JSON |>
-            (switch (_) {
-                case (?jsonValue) {
-                    switch (GetUsersTopArtistsAndTracks200Response.fromJSON(jsonValue)) {
-                        case (?value) value;
-                        case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to GetUsersTopArtistsAndTracks200Response");
-                    }
-                };
-                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to deserialize response");
+            (switch (GetUsersTopArtistsAndTracks200Response.fromCandidValue(_)) {
+                case (?value) value;
+                case null throw Error.reject("HTTP " # Int.toText(response.status) # ": Failed to convert response to GetUsersTopArtistsAndTracks200Response");
             })
         } else {
             // Error response (4xx, 5xx): parse error models and throw
@@ -2278,16 +2029,10 @@ module {
             // Try parsing 401 response as GetAnAlbum401Response
             if (response.status == 401) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -2299,16 +2044,10 @@ module {
             // Try parsing 403 response as GetAnAlbum401Response
             if (response.status == 403) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -2320,16 +2059,10 @@ module {
             // Try parsing 429 response as GetAnAlbum401Response
             if (response.status == 429) {
                 let errorDetail = if (responseText != "") {
-                    switch (JSON.fromText(responseText, null)) {
-                        case (#ok(blob)) {
-                            let parsedJson : ?GetAnAlbum401Response.JSON = from_candid(blob);
-                            switch (parsedJson) {
-                                case (?jsonValue) {
-                                    switch (GetAnAlbum401Response.fromJSON(jsonValue)) {
-                                        case (?err) " - " # debug_show(err);
-                                        case null " - " # responseText;
-                                    }
-                                };
+                    switch (JSON.toCandid(responseText)) {
+                        case (#ok(c__)) {
+                            switch (GetAnAlbum401Response.fromCandidValue(c__)) {
+                                case (?err) " - " # debug_show(err);
                                 case null " - " # responseText;
                             };
                         };
@@ -2349,6 +2082,9 @@ module {
     ///
     /// Remove one or more albums from the current user's 'Your Music' library. 
     public func removeAlbumsUser(config : Config, ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/albums"
             # "?" # "ids=" # ids;
@@ -2378,19 +2114,19 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #delete;
             headers;
             body = do ? {
-                let jsonValue = SaveAlbumsUserRequest.toJSON(saveAlbumsUserRequest);
-                let candidBlob = to_candid(jsonValue);
-                let #ok(jsonText) = JSON.toText(candidBlob, [], null) else throw Error.reject("Failed to serialize to JSON");
+                let candidValue : Candid.Candid = SaveAlbumsUserRequest.toCandidValue(saveAlbumsUserRequest);
+                let #ok(jsonText) = JSON.fromCandid(candidValue)
+                    else throw Error.reject("Failed to serialize body to JSON");
                 Text.encodeUtf8(jsonText)
             };
         };
@@ -2404,6 +2140,9 @@ module {
     ///
     /// Remove one or more audiobooks from the Spotify user's library. 
     public func removeAudiobooksUser(config : Config, ids : Text) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/audiobooks"
             # "?" # "ids=" # ids;
@@ -2433,12 +2172,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #delete;
             headers;
@@ -2454,6 +2193,9 @@ module {
     ///
     /// Remove one or more episodes from the current user's library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer). 
     public func removeEpisodesUser(config : Config, ids : Text, removeEpisodesUserRequest : RemoveEpisodesUserRequest) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/episodes"
             # "?" # "ids=" # ids;
@@ -2483,19 +2225,19 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #delete;
             headers;
             body = do ? {
-                let jsonValue = RemoveEpisodesUserRequest.toJSON(removeEpisodesUserRequest);
-                let candidBlob = to_candid(jsonValue);
-                let #ok(jsonText) = JSON.toText(candidBlob, [], null) else throw Error.reject("Failed to serialize to JSON");
+                let candidValue : Candid.Candid = RemoveEpisodesUserRequest.toCandidValue(removeEpisodesUserRequest);
+                let #ok(jsonText) = JSON.fromCandid(candidValue)
+                    else throw Error.reject("Failed to serialize body to JSON");
                 Text.encodeUtf8(jsonText)
             };
         };
@@ -2509,6 +2251,9 @@ module {
     ///
     /// Delete one or more shows from current Spotify user's library. 
     public func removeShowsUser(config : Config, ids : Text, market : Text) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/shows"
             # "?" # "ids=" # ids # "&" # "market=" # market;
@@ -2538,12 +2283,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #delete;
             headers;
@@ -2559,6 +2304,9 @@ module {
     ///
     /// Remove one or more tracks from the current user's 'Your Music' library. 
     public func removeTracksUser(config : Config, ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/tracks"
             # "?" # "ids=" # ids;
@@ -2588,19 +2336,19 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #delete;
             headers;
             body = do ? {
-                let jsonValue = SaveAlbumsUserRequest.toJSON(saveAlbumsUserRequest);
-                let candidBlob = to_candid(jsonValue);
-                let #ok(jsonText) = JSON.toText(candidBlob, [], null) else throw Error.reject("Failed to serialize to JSON");
+                let candidValue : Candid.Candid = SaveAlbumsUserRequest.toCandidValue(saveAlbumsUserRequest);
+                let #ok(jsonText) = JSON.fromCandid(candidValue)
+                    else throw Error.reject("Failed to serialize body to JSON");
                 Text.encodeUtf8(jsonText)
             };
         };
@@ -2614,6 +2362,9 @@ module {
     ///
     /// Save one or more albums to the current user's 'Your Music' library. 
     public func saveAlbumsUser(config : Config, ids : Text, saveAlbumsUserRequest : SaveAlbumsUserRequest) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/albums"
             # "?" # "ids=" # ids;
@@ -2643,19 +2394,19 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #put;
             headers;
             body = do ? {
-                let jsonValue = SaveAlbumsUserRequest.toJSON(saveAlbumsUserRequest);
-                let candidBlob = to_candid(jsonValue);
-                let #ok(jsonText) = JSON.toText(candidBlob, [], null) else throw Error.reject("Failed to serialize to JSON");
+                let candidValue : Candid.Candid = SaveAlbumsUserRequest.toCandidValue(saveAlbumsUserRequest);
+                let #ok(jsonText) = JSON.fromCandid(candidValue)
+                    else throw Error.reject("Failed to serialize body to JSON");
                 Text.encodeUtf8(jsonText)
             };
         };
@@ -2669,6 +2420,9 @@ module {
     ///
     /// Save one or more audiobooks to the current Spotify user's library. 
     public func saveAudiobooksUser(config : Config, ids : Text) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/audiobooks"
             # "?" # "ids=" # ids;
@@ -2698,12 +2452,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #put;
             headers;
@@ -2719,6 +2473,9 @@ module {
     ///
     /// Save one or more episodes to the current user's library.<br/> This API endpoint is in __beta__ and could change without warning. Please share any feedback that you have, or issues that you discover, in our [developer community forum](https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer). 
     public func saveEpisodesUser(config : Config, ids : Text, saveEpisodesUserRequest : SaveEpisodesUserRequest) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/episodes"
             # "?" # "ids=" # ids;
@@ -2748,19 +2505,19 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #put;
             headers;
             body = do ? {
-                let jsonValue = SaveEpisodesUserRequest.toJSON(saveEpisodesUserRequest);
-                let candidBlob = to_candid(jsonValue);
-                let #ok(jsonText) = JSON.toText(candidBlob, [], null) else throw Error.reject("Failed to serialize to JSON");
+                let candidValue : Candid.Candid = SaveEpisodesUserRequest.toCandidValue(saveEpisodesUserRequest);
+                let #ok(jsonText) = JSON.fromCandid(candidValue)
+                    else throw Error.reject("Failed to serialize body to JSON");
                 Text.encodeUtf8(jsonText)
             };
         };
@@ -2774,6 +2531,9 @@ module {
     ///
     /// Save one or more shows to current Spotify user's library. 
     public func saveShowsUser(config : Config, ids : Text) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/shows"
             # "?" # "ids=" # ids;
@@ -2803,12 +2563,12 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #put;
             headers;
@@ -2824,6 +2584,9 @@ module {
     ///
     /// Save one or more tracks to the current user's 'Your Music' library. 
     public func saveTracksUser(config : Config, saveTracksUserRequest : SaveTracksUserRequest) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/tracks";
 
@@ -2852,19 +2615,19 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #put;
             headers;
             body = do ? {
-                let jsonValue = SaveTracksUserRequest.toJSON(saveTracksUserRequest);
-                let candidBlob = to_candid(jsonValue);
-                let #ok(jsonText) = JSON.toText(candidBlob, [], null) else throw Error.reject("Failed to serialize to JSON");
+                let candidValue : Candid.Candid = SaveTracksUserRequest.toCandidValue(saveTracksUserRequest);
+                let #ok(jsonText) = JSON.fromCandid(candidValue)
+                    else throw Error.reject("Failed to serialize body to JSON");
                 Text.encodeUtf8(jsonText)
             };
         };
@@ -2878,9 +2641,12 @@ module {
     ///
     /// Remove the current user as a follower of one or more artists or other Spotify users. 
     public func unfollowArtistsUsers(config : Config, type_ : ItemType2, ids : Text, unfollowArtistsUsersRequest : UnfollowArtistsUsersRequest) : async* () {
+        // x-server-override (set by spec-merge per input) pins this
+        // operation to the right host for multi-spec merged clients;
+        // when absent we use config.baseUrl as before.
         let {baseUrl; cycles} = config;
         let baseUrl__ = baseUrl # "/me/following"
-            # "?" # "type=" # ItemType2.toJSON(type_) # "&" # "ids=" # ids;
+            # "?" # "type=" # ItemType2.toText(type_) # "&" # "ids=" # ids;
 
         // Add API key as query parameter if using apiKey auth
         let url = switch (config.auth) {
@@ -2907,19 +2673,19 @@ module {
             case null [];
         };
 
-        let headers = Array.flatten<http_header>([
+        let headers = Array.flatten<HttpHeader>([
             baseHeaders,
             authHeaders
         ]);
 
-        let request : http_request_args = { config with
+        let request : HttpRequestArgs = { config with
             url;
             method = #delete;
             headers;
             body = do ? {
-                let jsonValue = UnfollowArtistsUsersRequest.toJSON(unfollowArtistsUsersRequest);
-                let candidBlob = to_candid(jsonValue);
-                let #ok(jsonText) = JSON.toText(candidBlob, [], null) else throw Error.reject("Failed to serialize to JSON");
+                let candidValue : Candid.Candid = UnfollowArtistsUsersRequest.toCandidValue(unfollowArtistsUsersRequest);
+                let #ok(jsonText) = JSON.fromCandid(candidValue)
+                    else throw Error.reject("Failed to serialize body to JSON");
                 Text.encodeUtf8(jsonText)
             };
         };

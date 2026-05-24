@@ -1,49 +1,173 @@
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
+import Runtime "mo:core/Runtime";
 
 // SegmentObject.mo
 
 module {
-    // User-facing type: what application code uses
-    public type SegmentObject = {
-        /// The starting point (in seconds) of the segment.
+    /// The required-fields slice of SegmentObject — what `init` consumes.
+    /// Exposed so callers can write `let req : Required = {...}` if they want
+    /// to manipulate the required-only payload independently of the full record.
+    public type Required = {
+    };
+
+    // Optional-fields slice. Private — not part of the consumer surface;
+    // it's an internal scaffold so we can express SegmentObject as an
+    // `and`-intersection and keep `init` from listing every optional explicitly.
+    type Optional = {
         start : ?Float;
-        /// The duration (in seconds) of the segment.
         duration : ?Float;
-        /// The confidence, from 0.0 to 1.0, of the reliability of the segmentation. Segments of the song which are difficult to logically segment (e.g: noise) may correspond to low values in this field. 
         confidence : ?Float;
-        /// The onset loudness of the segment in decibels (dB). Combined with `loudness_max` and `loudness_max_time`, these components can be used to describe the \"attack\" of the segment.
         loudness_start : ?Float;
-        /// The peak loudness of the segment in decibels (dB). Combined with `loudness_start` and `loudness_max_time`, these components can be used to describe the \"attack\" of the segment.
         loudness_max : ?Float;
-        /// The segment-relative offset of the segment peak loudness in seconds. Combined with `loudness_start` and `loudness_max`, these components can be used to desctibe the \"attack\" of the segment.
         loudness_max_time : ?Float;
-        /// The offset loudness of the segment in decibels (dB). This value should be equivalent to the loudness_start of the following segment.
         loudness_end : ?Float;
-        /// Pitch content is given by a “chroma” vector, corresponding to the 12 pitch classes C, C#, D to B, with values ranging from 0 to 1 that describe the relative dominance of every pitch in the chromatic scale. For example a C Major chord would likely be represented by large values of C, E and G (i.e. classes 0, 4, and 7).  Vectors are normalized to 1 by their strongest dimension, therefore noisy sounds are likely represented by values that are all close to 1, while pure tones are described by one value at 1 (the pitch) and others near 0. As can be seen below, the 12 vector indices are a combination of low-power spectrum values at their respective pitch frequencies. ![pitch vector](/assets/audio/Pitch_vector.png) 
         pitches : ?[Float];
-        /// Timbre is the quality of a musical note or sound that distinguishes different types of musical instruments, or voices. It is a complex notion also referred to as sound color, texture, or tone quality, and is derived from the shape of a segment’s spectro-temporal surface, independently of pitch and loudness. The timbre feature is a vector that includes 12 unbounded values roughly centered around 0. Those values are high level abstractions of the spectral surface, ordered by degree of importance.  For completeness however, the first dimension represents the average loudness of the segment; second emphasizes brightness; third is more closely correlated to the flatness of a sound; fourth to sounds with a stronger attack; etc. See an image below representing the 12 basis functions (i.e. template segments). ![timbre basis functions](/assets/audio/Timbre_basis_functions.png)  The actual timbre of the segment is best described as a linear combination of these 12 basis functions weighted by the coefficient values: timbre = c1 x b1 + c2 x b2 + ... + c12 x b12, where c1 to c12 represent the 12 coefficients and b1 to b12 the 12 basis functions as displayed below. Timbre vectors are best used in comparison with each other. 
         timbre : ?[Float];
     };
 
-    // JSON sub-module: everything needed for JSON serialization
+    public type SegmentObject = Required and Optional;
+
     public module JSON {
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer SegmentObject type
-        public type JSON = {
-            start : ?Float;
-            duration : ?Float;
-            confidence : ?Float;
-            loudness_start : ?Float;
-            loudness_max : ?Float;
-            loudness_max_time : ?Float;
-            loudness_end : ?Float;
-            pitches : ?[Float];
-            timbre : ?[Float];
+        // `init` constructs a SegmentObject from just its required fields,
+        // defaulting all optional fields to `null`. Pair with record-update
+        // syntax to layer in selected optionals:
+        //   let req = { SegmentObject.init { …required fields… } with someOpt = ?… };
+        // Implementation uses Candid round-trip — Candid record subtyping fills
+        // absent optional fields with null. Costs a few cycles per call (init is
+        // not on a hot path) but keeps generated code compact regardless of how
+        // many optional fields the model has.
+        public func init(required : Required) : SegmentObject {
+            let ?res = from_candid(to_candid(required)) : ?SegmentObject else Runtime.unreachable();
+            res
         };
 
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : SegmentObject) : JSON = value;
+        public func toCandidValue(value : SegmentObject) : Candid.Candid {
+            let buf = List.empty<(Text, Candid.Candid)>();
+            switch (value.start) {
+                case (?v__) List.add(buf, ("start", #Float(v__)));
+                case null ();
+            };
+            switch (value.duration) {
+                case (?v__) List.add(buf, ("duration", #Float(v__)));
+                case null ();
+            };
+            switch (value.confidence) {
+                case (?v__) List.add(buf, ("confidence", #Float(v__)));
+                case null ();
+            };
+            switch (value.loudness_start) {
+                case (?v__) List.add(buf, ("loudness_start", #Float(v__)));
+                case null ();
+            };
+            switch (value.loudness_max) {
+                case (?v__) List.add(buf, ("loudness_max", #Float(v__)));
+                case null ();
+            };
+            switch (value.loudness_max_time) {
+                case (?v__) List.add(buf, ("loudness_max_time", #Float(v__)));
+                case null ();
+            };
+            switch (value.loudness_end) {
+                case (?v__) List.add(buf, ("loudness_end", #Float(v__)));
+                case null ();
+            };
+            switch (value.pitches) {
+                case (?v__) List.add(buf, ("pitches", #Array(Array.map<Float, Candid.Candid>(v__, func(f : Float) : Candid.Candid = #Float(f)))));
+                case null ();
+            };
+            switch (value.timbre) {
+                case (?v__) List.add(buf, ("timbre", #Array(Array.map<Float, Candid.Candid>(v__, func(f : Float) : Candid.Candid = #Float(f)))));
+                case null ();
+            };
+            #Record(List.toArray(buf));
+        };
 
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?SegmentObject = ?json;
-    }
-}
+        public func fromCandidValue(candid : Candid.Candid) : ?SegmentObject =
+            switch (candid) {
+                case (#Record(fields)) {
+                    let start : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "start")) {
+                        case (?start_field) ((switch (start_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let duration : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "duration")) {
+                        case (?duration_field) ((switch (duration_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let confidence : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "confidence")) {
+                        case (?confidence_field) ((switch (confidence_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let loudness_start : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "loudness_start")) {
+                        case (?loudness_start_field) ((switch (loudness_start_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let loudness_max : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "loudness_max")) {
+                        case (?loudness_max_field) ((switch (loudness_max_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let loudness_max_time : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "loudness_max_time")) {
+                        case (?loudness_max_time_field) ((switch (loudness_max_time_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let loudness_end : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "loudness_end")) {
+                        case (?loudness_end_field) ((switch (loudness_end_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let pitches : ?[Float] = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "pitches")) {
+                        case (?pitches_field) ((switch (pitches_field.1) {
+                        case (#Array(xs__)) {
+                            let buf__ = List.empty<Float>();
+                            for (c__ in xs__.values()) {
+                                let ?f__ = (switch (c__) { case (#Float(g)) ?g; case (#Int(j)) ?Float.fromInt(j); case (#Nat(k)) ?Float.fromInt(k); case _ null }) else return null;
+                                List.add(buf__, f__);
+                            };
+                            ?List.toArray(buf__);
+                        };
+                        case _ null;
+                    }));
+                        case null null;
+                    };
+                    let timbre : ?[Float] = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "timbre")) {
+                        case (?timbre_field) ((switch (timbre_field.1) {
+                        case (#Array(xs__)) {
+                            let buf__ = List.empty<Float>();
+                            for (c__ in xs__.values()) {
+                                let ?f__ = (switch (c__) { case (#Float(g)) ?g; case (#Int(j)) ?Float.fromInt(j); case (#Nat(k)) ?Float.fromInt(k); case _ null }) else return null;
+                                List.add(buf__, f__);
+                            };
+                            ?List.toArray(buf__);
+                        };
+                        case _ null;
+                    }));
+                        case null null;
+                    };
+                    ?{
+                        start;
+                        duration;
+                        confidence;
+                        loudness_start;
+                        loudness_max;
+                        loudness_max_time;
+                        loudness_end;
+                        pitches;
+                        timbre;
+                    };
+                };
+                case _ null;
+            };
+    };
+
+    /// Re-export of `JSON.init` at the outer module level. Three import shapes
+    /// all reach the same function:
+    ///
+    ///   - `import T "...";                                     T.init {…}`     // whole-module
+    ///   - `import { type T; JSON = T } "...";                  T.init {…}`     // JSON-alias
+    ///   - `import { type T; JSON = T; init = myInit } "...";   myInit {…}`     // explicit rename
+    ///
+    /// The third form is handy when several models would all be reachable
+    /// as `T.init` and you want each bound to a distinct local name.
+    public let init = JSON.init;
+};

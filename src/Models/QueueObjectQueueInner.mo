@@ -22,45 +22,58 @@ import { type SimplifiedArtistObject; JSON = SimplifiedArtistObject } "./Simplif
 import { type SimplifiedShowObject; JSON = SimplifiedShowObject } "./SimplifiedShowObject";
 
 import { type TrackObject; JSON = TrackObject } "./TrackObject";
-
-// QueueObjectQueueInner.mo
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
 import Runtime "mo:core/Runtime";
 
+// QueueObjectQueueInner.mo
+// Discriminator-oneOf — wire is a flat object whose `type`
+// field selects the schema. Branches' `toCandidValue` already include that field, so dispatch
+// is just a forward call (no re-wrapping).
+
 module {
-    // User-facing type: discriminated union (oneOf)
     public type QueueObjectQueueInner = {
-        #TrackObject : TrackObject;
-        #EpisodeObject : EpisodeObject;
+        #track : TrackObject;
+        #episode : EpisodeObject;
     };
 
-    // JSON sub-module: everything needed for JSON serialization
     public module JSON {
-        // Convert oneOf variant to Text for URL parameters
+        public func toCandidValue(value : QueueObjectQueueInner) : Candid.Candid =
+            switch (value) {
+                case (#track(v)) TrackObject.toCandidValue(v);
+                case (#episode(v)) EpisodeObject.toCandidValue(v);
+            };
+
         public func toText(value : QueueObjectQueueInner) : Text =
             switch (value) {
-                case (#TrackObject(v)) Runtime.unreachable();
-                case (#EpisodeObject(v)) Runtime.unreachable();
+                case (#track(_)) "track";
+                case (#episode(_)) "episode";
             };
 
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer QueueObjectQueueInner type
-        public type JSON = {
-            #TrackObject : TrackObject;
-            #EpisodeObject : EpisodeObject;
-        };
-
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : QueueObjectQueueInner) : JSON =
-            switch (value) {
-                case (#TrackObject(v)) #TrackObject(v);
-                case (#EpisodeObject(v)) #EpisodeObject(v);
+        public func fromCandidValue(candid : Candid.Candid) : ?QueueObjectQueueInner =
+            switch (candid) {
+                case (#Record(fields)) {
+                    let ?discPair = Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "type") else return null;
+                    switch (discPair.1) {
+                        case (#Text(disc)) {
+                            switch (disc) {
+                                case ("track") {
+                                    let ?inner = TrackObject.fromCandidValue(candid) else return null;
+                                    ?#track(inner);
+                                };
+                                case ("episode") {
+                                    let ?inner = EpisodeObject.fromCandidValue(candid) else return null;
+                                    ?#episode(inner);
+                                };
+                                case _ null;
+                            };
+                        };
+                        case _ null;
+                    };
+                };
+                case _ null;
             };
-
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?QueueObjectQueueInner =
-            switch (json) {
-                case (#TrackObject(v)) ?#TrackObject(v);
-                case (#EpisodeObject(v)) ?#EpisodeObject(v);
-            };
-    }
-}
+    };
+};

@@ -1,86 +1,246 @@
 
 import { type AudioFeaturesObjectType; JSON = AudioFeaturesObjectType } "./AudioFeaturesObjectType";
-
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
+import Runtime "mo:core/Runtime";
 import Int "mo:core/Int";
 
 // AudioFeaturesObject.mo
 
 module {
-    // User-facing type: what application code uses
-    public type AudioFeaturesObject = {
-        /// A confidence measure from 0.0 to 1.0 of whether the track is acoustic. 1.0 represents high confidence the track is acoustic. 
+    /// The required-fields slice of AudioFeaturesObject — what `init` consumes.
+    /// Exposed so callers can write `let req : Required = {...}` if they want
+    /// to manipulate the required-only payload independently of the full record.
+    public type Required = {
+    };
+
+    // Optional-fields slice. Private — not part of the consumer surface;
+    // it's an internal scaffold so we can express AudioFeaturesObject as an
+    // `and`-intersection and keep `init` from listing every optional explicitly.
+    type Optional = {
         acousticness : ?Float;
-        /// A URL to access the full audio analysis of this track. An access token is required to access this data. 
         analysis_url : ?Text;
-        /// Danceability describes how suitable a track is for dancing based on a combination of musical elements including tempo, rhythm stability, beat strength, and overall regularity. A value of 0.0 is least danceable and 1.0 is most danceable. 
         danceability : ?Float;
-        /// The duration of the track in milliseconds. 
         duration_ms : ?Int;
-        /// Energy is a measure from 0.0 to 1.0 and represents a perceptual measure of intensity and activity. Typically, energetic tracks feel fast, loud, and noisy. For example, death metal has high energy, while a Bach prelude scores low on the scale. Perceptual features contributing to this attribute include dynamic range, perceived loudness, timbre, onset rate, and general entropy. 
         energy : ?Float;
-        /// The Spotify ID for the track. 
         id : ?Text;
-        /// Predicts whether a track contains no vocals. \"Ooh\" and \"aah\" sounds are treated as instrumental in this context. Rap or spoken word tracks are clearly \"vocal\". The closer the instrumentalness value is to 1.0, the greater likelihood the track contains no vocal content. Values above 0.5 are intended to represent instrumental tracks, but confidence is higher as the value approaches 1.0. 
         instrumentalness : ?Float;
-        /// The key the track is in. Integers map to pitches using standard [Pitch Class notation](https://en.wikipedia.org/wiki/Pitch_class). E.g. 0 = C, 1 = C♯/D♭, 2 = D, and so on. If no key was detected, the value is -1. 
         key : ?Int;
-        /// Detects the presence of an audience in the recording. Higher liveness values represent an increased probability that the track was performed live. A value above 0.8 provides strong likelihood that the track is live. 
         liveness : ?Float;
-        /// The overall loudness of a track in decibels (dB). Loudness values are averaged across the entire track and are useful for comparing relative loudness of tracks. Loudness is the quality of a sound that is the primary psychological correlate of physical strength (amplitude). Values typically range between -60 and 0 db. 
         loudness : ?Float;
-        /// Mode indicates the modality (major or minor) of a track, the type of scale from which its melodic content is derived. Major is represented by 1 and minor is 0. 
         mode : ?Int;
-        /// Speechiness detects the presence of spoken words in a track. The more exclusively speech-like the recording (e.g. talk show, audio book, poetry), the closer to 1.0 the attribute value. Values above 0.66 describe tracks that are probably made entirely of spoken words. Values between 0.33 and 0.66 describe tracks that may contain both music and speech, either in sections or layered, including such cases as rap music. Values below 0.33 most likely represent music and other non-speech-like tracks. 
         speechiness : ?Float;
-        /// The overall estimated tempo of a track in beats per minute (BPM). In musical terminology, tempo is the speed or pace of a given piece and derives directly from the average beat duration. 
         tempo : ?Float;
-        /// An estimated time signature. The time signature (meter) is a notational convention to specify how many beats are in each bar (or measure). The time signature ranges from 3 to 7 indicating time signatures of \"3/4\", to \"7/4\".
         time_signature : ?Nat;
-        /// A link to the Web API endpoint providing full details of the track. 
         track_href : ?Text;
         type_ : ?AudioFeaturesObjectType;
-        /// The Spotify URI for the track. 
         uri : ?Text;
-        /// A measure from 0.0 to 1.0 describing the musical positiveness conveyed by a track. Tracks with high valence sound more positive (e.g. happy, cheerful, euphoric), while tracks with low valence sound more negative (e.g. sad, depressed, angry). 
         valence : ?Float;
     };
 
-    // JSON sub-module: everything needed for JSON serialization
+    public type AudioFeaturesObject = Required and Optional;
+
     public module JSON {
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer AudioFeaturesObject type
-        public type JSON = {
-            acousticness : ?Float;
-            analysis_url : ?Text;
-            danceability : ?Float;
-            duration_ms : ?Int;
-            energy : ?Float;
-            id : ?Text;
-            instrumentalness : ?Float;
-            key : ?Int;
-            liveness : ?Float;
-            loudness : ?Float;
-            mode : ?Int;
-            speechiness : ?Float;
-            tempo : ?Float;
-            time_signature : ?Int;
-            track_href : ?Text;
-            type_ : ?AudioFeaturesObjectType.JSON;
-            uri : ?Text;
-            valence : ?Float;
+        // `init` constructs a AudioFeaturesObject from just its required fields,
+        // defaulting all optional fields to `null`. Pair with record-update
+        // syntax to layer in selected optionals:
+        //   let req = { AudioFeaturesObject.init { …required fields… } with someOpt = ?… };
+        // Implementation uses Candid round-trip — Candid record subtyping fills
+        // absent optional fields with null. Costs a few cycles per call (init is
+        // not on a hot path) but keeps generated code compact regardless of how
+        // many optional fields the model has.
+        public func init(required : Required) : AudioFeaturesObject {
+            let ?res = from_candid(to_candid(required)) : ?AudioFeaturesObject else Runtime.unreachable();
+            res
         };
 
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : AudioFeaturesObject) : JSON = { value with
-            type_ = do ? { AudioFeaturesObjectType.toJSON(value.type_!) };
+        public func toCandidValue(value : AudioFeaturesObject) : Candid.Candid {
+            let buf = List.empty<(Text, Candid.Candid)>();
+            switch (value.acousticness) {
+                case (?v__) List.add(buf, ("acousticness", #Float(v__)));
+                case null ();
+            };
+            switch (value.analysis_url) {
+                case (?v__) List.add(buf, ("analysis_url", #Text(v__)));
+                case null ();
+            };
+            switch (value.danceability) {
+                case (?v__) List.add(buf, ("danceability", #Float(v__)));
+                case null ();
+            };
+            switch (value.duration_ms) {
+                case (?v__) List.add(buf, ("duration_ms", #Int(v__)));
+                case null ();
+            };
+            switch (value.energy) {
+                case (?v__) List.add(buf, ("energy", #Float(v__)));
+                case null ();
+            };
+            switch (value.id) {
+                case (?v__) List.add(buf, ("id", #Text(v__)));
+                case null ();
+            };
+            switch (value.instrumentalness) {
+                case (?v__) List.add(buf, ("instrumentalness", #Float(v__)));
+                case null ();
+            };
+            switch (value.key) {
+                case (?v__) List.add(buf, ("key", #Int(v__)));
+                case null ();
+            };
+            switch (value.liveness) {
+                case (?v__) List.add(buf, ("liveness", #Float(v__)));
+                case null ();
+            };
+            switch (value.loudness) {
+                case (?v__) List.add(buf, ("loudness", #Float(v__)));
+                case null ();
+            };
+            switch (value.mode) {
+                case (?v__) List.add(buf, ("mode", #Int(v__)));
+                case null ();
+            };
+            switch (value.speechiness) {
+                case (?v__) List.add(buf, ("speechiness", #Float(v__)));
+                case null ();
+            };
+            switch (value.tempo) {
+                case (?v__) List.add(buf, ("tempo", #Float(v__)));
+                case null ();
+            };
+            switch (value.time_signature) {
+                case (?v__) List.add(buf, ("time_signature", #Nat(v__)));
+                case null ();
+            };
+            switch (value.track_href) {
+                case (?v__) List.add(buf, ("track_href", #Text(v__)));
+                case null ();
+            };
+            switch (value.type_) {
+                case (?v__) List.add(buf, ("type", AudioFeaturesObjectType.toCandidValue(v__)));
+                case null ();
+            };
+            switch (value.uri) {
+                case (?v__) List.add(buf, ("uri", #Text(v__)));
+                case null ();
+            };
+            switch (value.valence) {
+                case (?v__) List.add(buf, ("valence", #Float(v__)));
+                case null ();
+            };
+            #Record(List.toArray(buf));
         };
 
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?AudioFeaturesObject {
-            ?{ json with
-                time_signature = switch (json.time_signature) { case (?v) if (v < 0) null else ?Int.abs(v); case null null };
-                type_ = do ? { AudioFeaturesObjectType.fromJSON(json.type_!)! };
-            }
-        };
-    }
-}
+        public func fromCandidValue(candid : Candid.Candid) : ?AudioFeaturesObject =
+            switch (candid) {
+                case (#Record(fields)) {
+                    let acousticness : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "acousticness")) {
+                        case (?acousticness_field) ((switch (acousticness_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let analysis_url : ?Text = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "analysis_url")) {
+                        case (?analysis_url_field) ((switch (analysis_url_field.1) { case (#Text(s)) ?s; case _ null }));
+                        case null null;
+                    };
+                    let danceability : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "danceability")) {
+                        case (?danceability_field) ((switch (danceability_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let duration_ms : ?Int = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "duration_ms")) {
+                        case (?duration_ms_field) ((switch (duration_ms_field.1) { case (#Int(i)) ?i; case (#Nat(n)) ?n; case _ null }));
+                        case null null;
+                    };
+                    let energy : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "energy")) {
+                        case (?energy_field) ((switch (energy_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let id : ?Text = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "id")) {
+                        case (?id_field) ((switch (id_field.1) { case (#Text(s)) ?s; case _ null }));
+                        case null null;
+                    };
+                    let instrumentalness : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "instrumentalness")) {
+                        case (?instrumentalness_field) ((switch (instrumentalness_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let key : ?Int = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "key")) {
+                        case (?key_field) ((switch (key_field.1) { case (#Int(i)) ?i; case (#Nat(n)) ?n; case _ null }));
+                        case null null;
+                    };
+                    let liveness : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "liveness")) {
+                        case (?liveness_field) ((switch (liveness_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let loudness : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "loudness")) {
+                        case (?loudness_field) ((switch (loudness_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let mode : ?Int = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "mode")) {
+                        case (?mode_field) ((switch (mode_field.1) { case (#Int(i)) ?i; case (#Nat(n)) ?n; case _ null }));
+                        case null null;
+                    };
+                    let speechiness : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "speechiness")) {
+                        case (?speechiness_field) ((switch (speechiness_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let tempo : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "tempo")) {
+                        case (?tempo_field) ((switch (tempo_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    let time_signature : ?Nat = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "time_signature")) {
+                        case (?time_signature_field) ((switch (time_signature_field.1) { case (#Nat(n)) ?n; case (#Int(i)) (if (i < 0) null else ?Int.abs(i)); case _ null }));
+                        case null null;
+                    };
+                    let track_href : ?Text = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "track_href")) {
+                        case (?track_href_field) ((switch (track_href_field.1) { case (#Text(s)) ?s; case _ null }));
+                        case null null;
+                    };
+                    let type_ : ?AudioFeaturesObjectType = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "type")) {
+                        case (?type__field) (AudioFeaturesObjectType.fromCandidValue(type__field.1));
+                        case null null;
+                    };
+                    let uri : ?Text = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "uri")) {
+                        case (?uri_field) ((switch (uri_field.1) { case (#Text(s)) ?s; case _ null }));
+                        case null null;
+                    };
+                    let valence : ?Float = switch (Array.find<(Text, Candid.Candid)>(fields, func((k, _) : (Text, Candid.Candid)) : Bool = k == "valence")) {
+                        case (?valence_field) ((switch (valence_field.1) { case (#Float(f)) ?f; case (#Int(i)) ?Float.fromInt(i); case (#Nat(n)) ?Float.fromInt(n); case _ null }));
+                        case null null;
+                    };
+                    ?{
+                        acousticness;
+                        analysis_url;
+                        danceability;
+                        duration_ms;
+                        energy;
+                        id;
+                        instrumentalness;
+                        key;
+                        liveness;
+                        loudness;
+                        mode;
+                        speechiness;
+                        tempo;
+                        time_signature;
+                        track_href;
+                        type_;
+                        uri;
+                        valence;
+                    };
+                };
+                case _ null;
+            };
+    };
+
+    /// Re-export of `JSON.init` at the outer module level. Three import shapes
+    /// all reach the same function:
+    ///
+    ///   - `import T "...";                                     T.init {…}`     // whole-module
+    ///   - `import { type T; JSON = T } "...";                  T.init {…}`     // JSON-alias
+    ///   - `import { type T; JSON = T; init = myInit } "...";   myInit {…}`     // explicit rename
+    ///
+    /// The third form is handy when several models would all be reachable
+    /// as `T.init` and you want each bound to a distinct local name.
+    public let init = JSON.init;
+};

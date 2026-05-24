@@ -1,31 +1,33 @@
 /// The object type. 
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
+import Runtime "mo:core/Runtime";
 
 // EpisodeBaseType.mo
 /// Enum values: #episode
 
 module {
-    // User-facing type: type-safe variants for application code
     public type EpisodeBaseType = {
         #episode;
     };
 
-    // JSON sub-module: everything needed for JSON serialization
     public module JSON {
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer EpisodeBaseType type
-        public type JSON = Text;
+        public func toCandidValue(value : EpisodeBaseType) : Candid.Candid =
+            switch (value) {
+                case (#episode) #Text("episode");
+            };
 
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : EpisodeBaseType) : JSON =
+        public func fromCandidValue(candid : Candid.Candid) : ?EpisodeBaseType =
+            switch (candid) {
+                case (#Text("episode")) ?#episode;
+                case _ null;
+            };
+
+        public func toText(value : EpisodeBaseType) : Text =
             switch (value) {
                 case (#episode) "episode";
             };
-
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?EpisodeBaseType =
-            switch (json) {
-                case "episode" ?#episode;
-                case _ null;
-            };
-    }
-}
+    };
+};

@@ -1,34 +1,37 @@
 /// The type of entity to return. Valid values: `artists` or `tracks` 
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
+import Runtime "mo:core/Runtime";
 
 // Type_.mo
 /// Enum values: #artists, #tracks
 
 module {
-    // User-facing type: type-safe variants for application code
     public type Type_ = {
         #artists;
         #tracks;
     };
 
-    // JSON sub-module: everything needed for JSON serialization
     public module JSON {
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer Type_ type
-        public type JSON = Text;
+        public func toCandidValue(value : Type_) : Candid.Candid =
+            switch (value) {
+                case (#artists) #Text("artists");
+                case (#tracks) #Text("tracks");
+            };
 
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : Type_) : JSON =
+        public func fromCandidValue(candid : Candid.Candid) : ?Type_ =
+            switch (candid) {
+                case (#Text("artists")) ?#artists;
+                case (#Text("tracks")) ?#tracks;
+                case _ null;
+            };
+
+        public func toText(value : Type_) : Text =
             switch (value) {
                 case (#artists) "artists";
                 case (#tracks) "tracks";
             };
-
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?Type_ =
-            switch (json) {
-                case "artists" ?#artists;
-                case "tracks" ?#tracks;
-                case _ null;
-            };
-    }
-}
+    };
+};

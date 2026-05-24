@@ -1,37 +1,41 @@
 /// The type of the album. 
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
+import Runtime "mo:core/Runtime";
 
 // AlbumBaseAlbumType.mo
 /// Enum values: #album, #single, #compilation
 
 module {
-    // User-facing type: type-safe variants for application code
     public type AlbumBaseAlbumType = {
         #album;
         #single;
         #compilation;
     };
 
-    // JSON sub-module: everything needed for JSON serialization
     public module JSON {
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer AlbumBaseAlbumType type
-        public type JSON = Text;
+        public func toCandidValue(value : AlbumBaseAlbumType) : Candid.Candid =
+            switch (value) {
+                case (#album) #Text("album");
+                case (#single) #Text("single");
+                case (#compilation) #Text("compilation");
+            };
 
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : AlbumBaseAlbumType) : JSON =
+        public func fromCandidValue(candid : Candid.Candid) : ?AlbumBaseAlbumType =
+            switch (candid) {
+                case (#Text("album")) ?#album;
+                case (#Text("single")) ?#single;
+                case (#Text("compilation")) ?#compilation;
+                case _ null;
+            };
+
+        public func toText(value : AlbumBaseAlbumType) : Text =
             switch (value) {
                 case (#album) "album";
                 case (#single) "single";
                 case (#compilation) "compilation";
             };
-
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?AlbumBaseAlbumType =
-            switch (json) {
-                case "album" ?#album;
-                case "single" ?#single;
-                case "compilation" ?#compilation;
-                case _ null;
-            };
-    }
-}
+    };
+};

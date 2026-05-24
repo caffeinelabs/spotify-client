@@ -1,9 +1,13 @@
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
+import Runtime "mo:core/Runtime";
 
 // ItemTypeInner.mo
 /// Enum values: #album, #artist, #playlist, #track, #show, #episode, #audiobook
 
 module {
-    // User-facing type: type-safe variants for application code
     public type ItemTypeInner = {
         #album;
         #artist;
@@ -14,14 +18,31 @@ module {
         #audiobook;
     };
 
-    // JSON sub-module: everything needed for JSON serialization
     public module JSON {
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer ItemTypeInner type
-        public type JSON = Text;
+        public func toCandidValue(value : ItemTypeInner) : Candid.Candid =
+            switch (value) {
+                case (#album) #Text("album");
+                case (#artist) #Text("artist");
+                case (#playlist) #Text("playlist");
+                case (#track) #Text("track");
+                case (#show) #Text("show");
+                case (#episode) #Text("episode");
+                case (#audiobook) #Text("audiobook");
+            };
 
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : ItemTypeInner) : JSON =
+        public func fromCandidValue(candid : Candid.Candid) : ?ItemTypeInner =
+            switch (candid) {
+                case (#Text("album")) ?#album;
+                case (#Text("artist")) ?#artist;
+                case (#Text("playlist")) ?#playlist;
+                case (#Text("track")) ?#track;
+                case (#Text("show")) ?#show;
+                case (#Text("episode")) ?#episode;
+                case (#Text("audiobook")) ?#audiobook;
+                case _ null;
+            };
+
+        public func toText(value : ItemTypeInner) : Text =
             switch (value) {
                 case (#album) "album";
                 case (#artist) "artist";
@@ -31,18 +52,5 @@ module {
                 case (#episode) "episode";
                 case (#audiobook) "audiobook";
             };
-
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?ItemTypeInner =
-            switch (json) {
-                case "album" ?#album;
-                case "artist" ?#artist;
-                case "playlist" ?#playlist;
-                case "track" ?#track;
-                case "show" ?#show;
-                case "episode" ?#episode;
-                case "audiobook" ?#audiobook;
-                case _ null;
-            };
-    }
-}
+    };
+};

@@ -1,31 +1,33 @@
 /// If `include_external=audio` is specified it signals that the client can play externally hosted audio content, and marks the content as playable in the response. By default externally hosted audio content is marked as unplayable in the response. 
+import { Candid } "mo:serde-core";
+import Array "mo:core/Array";
+import List "mo:core/List";
+import Float "mo:core/Float";
+import Runtime "mo:core/Runtime";
 
 // IncludeExternal.mo
 /// Enum values: #audio
 
 module {
-    // User-facing type: type-safe variants for application code
     public type IncludeExternal = {
         #audio;
     };
 
-    // JSON sub-module: everything needed for JSON serialization
     public module JSON {
-        // JSON-facing Motoko type: mirrors JSON structure
-        // Named "JSON" to avoid shadowing the outer IncludeExternal type
-        public type JSON = Text;
+        public func toCandidValue(value : IncludeExternal) : Candid.Candid =
+            switch (value) {
+                case (#audio) #Text("audio");
+            };
 
-        // Convert User-facing type to JSON-facing Motoko type
-        public func toJSON(value : IncludeExternal) : JSON =
+        public func fromCandidValue(candid : Candid.Candid) : ?IncludeExternal =
+            switch (candid) {
+                case (#Text("audio")) ?#audio;
+                case _ null;
+            };
+
+        public func toText(value : IncludeExternal) : Text =
             switch (value) {
                 case (#audio) "audio";
             };
-
-        // Convert JSON-facing Motoko type to User-facing type
-        public func fromJSON(json : JSON) : ?IncludeExternal =
-            switch (json) {
-                case "audio" ?#audio;
-                case _ null;
-            };
-    }
-}
+    };
+};

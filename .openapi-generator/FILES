@@ -1,4 +1,5 @@
 README.md
+icp.yaml
 mops.toml
 src/Apis/AlbumsApi.mo
 src/Apis/ArtistsApi.mo
