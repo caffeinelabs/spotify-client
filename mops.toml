@@ -3,7 +3,7 @@ moc = "1.4.1"
 
 [package]
 name = "spotify-client"
-version = "0.2.1"
+version = "0.2.2"
 description = "Generated Motoko client for Spotify Web API"
 repository = "https://github.com/caffeinelabs/spotify-client"
 license = "Apache-2.0"

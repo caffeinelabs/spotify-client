@@ -10,7 +10,7 @@ description: >-
 version: 0.2.0
 compatibility:
   mops:
-    spotify-client: "~0.2.1"
+    spotify-client: "~0.2.2"
 ---
 
 # spotify-client

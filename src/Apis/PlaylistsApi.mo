@@ -1786,7 +1786,7 @@ module {
             method = #put;
             headers;
             body = do ? {
-                let candidValue : Candid.Candid = #Text(body);
+                let candidValue : Candid.Candid = #Blob(body);
                 let #ok(jsonText) = JSON.fromCandid(candidValue)
                     else throw Error.reject("Failed to serialize body to JSON");
                 Text.encodeUtf8(jsonText)

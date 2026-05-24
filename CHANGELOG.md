@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Entries before `0.2.1` are uncatalogued; see the git log for prior history.
 
+## [0.2.2](https://github.com/caffeinelabs/spotify-client/releases/tag/v0.2.2) — 2026-05-25
+
+### Fixed
+
+- `uploadCustomPlaylistCover` (and any other endpoint whose request body type is `Blob`) no longer produces a type-checker rejection at consumer compile time.  The 0.2.1 codegen template hardcoded `#Text(body)` for every primitive-typed body parameter regardless of its actual Motoko type; for `body : Blob` this is a type error that bites the consumer's `moc --check`.  0.2.2's template dispatches on the body parameter's type via `x-body-is-{text,int,nat,float,bool,blob}` vendor extensions (parallel to `x-return-array-element-is-*`), emitting the matching `Candid.Candid` variant.  Affects only `uploadCustomPlaylistCover` in Spotify's surface; latent in 0.2.1 because `typecheck.sh`'s full per-file sweep wasn't run before publish.
+
 ## [0.2.1](https://github.com/caffeinelabs/spotify-client/releases/tag/v0.2.1) — 2026-05-24
 
 ### Added
